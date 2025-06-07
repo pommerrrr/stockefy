@@ -120,7 +120,7 @@ function AppContent() {
   // Authenticated - show main app
   return (
     <AppContext.Provider value={{ navigateToEntries, navigateToRecipes, navigateToReports }}>
-      <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="app-container">
         <Sidebar currentPage={currentPage} onPageChange={(page: Page) => setCurrentPage(page)} />
         
         <div className="flex-1 flex flex-col">

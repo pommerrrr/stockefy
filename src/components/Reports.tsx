@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { generateConsumptionReportPDF, generateMovementReportPDF, downloadPDF } from '@/lib/pdfUtils';
+import { generateCompleteReportPDF, downloadPDF } from '@/lib/pdfUtils';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -98,16 +98,10 @@ export function Reports() {
   const [purchaseDate, setPurchaseDate] = useState('');
   const [demandIncrease, setDemandIncrease] = useState(0);
 
-  const handleExportConsumptionReport = () => {
-    const doc = generateConsumptionReportPDF(mockConsumptionData);
+  const handleExportCompleteReport = () => {
+    const doc = generateCompleteReportPDF(mockConsumptionData, mockMovementSummary);
     const today = new Date().toISOString().split('T')[0];
-    downloadPDF(doc, `relatorio-consumo-${today}.pdf`);
-  };
-
-  const handleExportMovementReport = () => {
-    const doc = generateMovementReportPDF(mockMovementSummary);
-    const today = new Date().toISOString().split('T')[0];
-    downloadPDF(doc, `relatorio-movimentacoes-${today}.pdf`);
+    downloadPDF(doc, `relatorio-completo-${today}.pdf`);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -142,7 +136,7 @@ export function Reports() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight text-primary">
             Relatórios e Análises
           </h1>
           <p className="text-muted-foreground">
@@ -150,9 +144,9 @@ export function Reports() {
           </p>
         </div>
         
-        <Button onClick={handleExportConsumptionReport} className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700">
+        <Button onClick={handleExportCompleteReport} className="btn-primary">
           <Download className="w-4 h-4 mr-2" />
-          Exportar Relatório PDF
+          Exportar Relatório Completo (PDF)
         </Button>
       </div>
 
@@ -523,7 +517,7 @@ export function Reports() {
                     Baseada no consumo histórico e estoque mínimo configurado
                   </CardDescription>
                 </div>
-                <Button onClick={handleExportMovementReport} variant="outline">
+                <Button onClick={handleExportCompleteReport} variant="outline">
                   <Download className="w-4 h-4 mr-2" />
                   Exportar Lista
                 </Button>

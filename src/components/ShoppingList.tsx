@@ -228,7 +228,7 @@ export function ShoppingList() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-green-600 to-green-700 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight text-primary">
             Lista de Compras Inteligente
           </h1>
           <p className="text-muted-foreground">
@@ -245,7 +245,7 @@ export function ShoppingList() {
             <Download className="w-4 h-4 mr-2" />
             Exportar CSV
           </Button>
-          <Button onClick={recalculateList} className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800">
+          <Button onClick={recalculateList} className="btn-primary">
             <Calculator className="w-4 h-4 mr-2" />
             Recalcular
           </Button>

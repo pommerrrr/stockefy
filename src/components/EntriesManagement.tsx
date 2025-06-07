@@ -107,7 +107,7 @@ export function EntriesManagement() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight text-primary">
             Gestão de Entradas
           </h1>
           <p className="text-muted-foreground">
@@ -118,7 +118,7 @@ export function EntriesManagement() {
         <div className="flex gap-3">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700">
+              <Button className="btn-primary">
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Entrada
               </Button>
@@ -290,9 +290,9 @@ function EntryFormDialog({ onSave, onCancel }: EntryFormDialogProps) {
                 setFormData({ ...formData, productName: '' });
               }
             }}>
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="existing">Produto Existente</TabsTrigger>
-                <TabsTrigger value="new">Novo Produto</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 h-10">
+                <TabsTrigger value="existing" className="text-sm">Produto Existente</TabsTrigger>
+                <TabsTrigger value="new" className="text-sm">Novo Produto</TabsTrigger>
               </TabsList>
               
               <TabsContent value="existing" className="space-y-2">
@@ -428,7 +428,7 @@ function EntryFormDialog({ onSave, onCancel }: EntryFormDialogProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit" className="bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700">
+          <Button type="submit" className="btn-primary">
             Registrar Entrada
           </Button>
         </div>

@@ -34,14 +34,14 @@ const menuItems = [
 export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
   return (
     <div className="w-64 bg-white border-r border-gray-200 shadow-lg">
-      <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-green-600">
+      <div className="p-6 border-b border-border bg-primary">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-            <img src="/logo.png" alt="Stockely" className="w-8 h-8" />
+          <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center backdrop-blur-sm">
+            <img src="/logo-clean.png" alt="Stockely" className="w-6 h-6" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">Stockely</h1>
-            <p className="text-sm text-orange-100">Gestão Inteligente de Estoque</p>
+            <h1 className="text-lg font-semibold text-white">Stockely</h1>
+            <p className="text-xs text-white/80">Gestão de Estoque</p>
           </div>
         </div>
       </div>
