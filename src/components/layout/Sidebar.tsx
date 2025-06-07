@@ -37,10 +37,10 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps) {
       <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-orange-500 to-green-600">
         <div className="flex items-center gap-3">
           <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-            <img src="/logo.png" alt="StockFood" className="w-8 h-8" />
+            <img src="/logo.png" alt="Stockely" className="w-8 h-8" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-white">StockFood</h1>
+            <h1 className="text-xl font-bold text-white">Stockely</h1>
             <p className="text-sm text-orange-100">Gestão Inteligente de Estoque</p>
           </div>
         </div>
