@@ -1,0 +1,50 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users - only authenticated users can access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Organizations - only members can access
+    match /organizations/{organizationId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Products - only organization members can access
+    match /products/{productId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Stock Movements - only organization members can access
+    match /stockMovements/{movementId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Recipes - only organization members can access
+    match /recipes/{recipeId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Suppliers - only organization members can access
+    match /suppliers/{supplierId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Shopping Lists - only organization members can access
+    match /shoppingLists/{listId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Helper function to get organization owner
+    function getUserOrganizationOwnerId(organizationId) {
+      return get(/databases/$(database)/documents/organizations/$(organizationId)).data.ownerId;
+    }
+  }
+}
