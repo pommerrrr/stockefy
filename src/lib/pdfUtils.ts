@@ -44,20 +44,20 @@ const mockLossData: LossItem[] = [
   { item: 'Queijo Cheddar', quantity: 0.5, unit: 'Kg', reason: 'Contaminação', cost: 14.45, date: '2025-06-02' }
 ];
 
-// Utilitário para gerar PDF da lista de compras (SEM VALORES)
+// Utilitário para gerar PDF da lista de compras (SEM VALORES E SEM FORNECEDOR)
 export const generateShoppingListPDF = (items: ShoppingItem[]) => {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.width;
   const pageHeight = doc.internal.pageSize.height;
   
   // Header simplificado (sem logo)
-  doc.setFillColor(233, 115, 22); // Cor laranja limpa
+  doc.setFillColor(234, 88, 12); // Cor laranja
   doc.rect(0, 0, pageWidth, 25, 'F');
   
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('STOCKELY - LISTA DE COMPRAS', 20, 16);
+  doc.text('Stockely - Lista de Compras', 20, 16);
   
   doc.setTextColor(0, 0, 0);
   doc.setFontSize(10);
@@ -72,20 +72,19 @@ export const generateShoppingListPDF = (items: ShoppingItem[]) => {
   
   let yPosition = 55;
   
-  // Cabeçalho da tabela (SEM CUSTO)
+  // Cabeçalho da tabela (SEM CUSTO E SEM FORNECEDOR)
   doc.setFillColor(248, 249, 250);
   doc.rect(20, yPosition - 5, pageWidth - 40, 10, 'F');
   
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.text('PRODUTO', 25, yPosition);
-  doc.text('QTD', 110, yPosition);
-  doc.text('UNIDADE', 135, yPosition);
-  doc.text('FORNECEDOR', 170, yPosition);
+  doc.text('QUANTIDADE', 120, yPosition);
+  doc.text('UNIDADE', 160, yPosition);
   
   yPosition += 15;
   
-  // Lista de itens (SEM VALORES)
+  // Lista de itens (SEM VALORES E SEM FORNECEDOR)
   doc.setFont('helvetica', 'normal');
   
   items.forEach((item, index) => {
@@ -104,7 +103,7 @@ export const generateShoppingListPDF = (items: ShoppingItem[]) => {
     const productName = item.productName || item.item || 'Produto';
     
     // Limitar tamanho do nome do produto
-    const maxProductNameLength = 35;
+    const maxProductNameLength = 45;
     const displayName = productName.length > maxProductNameLength 
       ? productName.substring(0, maxProductNameLength) + '...' 
       : productName;
@@ -112,16 +111,8 @@ export const generateShoppingListPDF = (items: ShoppingItem[]) => {
     doc.text(displayName, 25, yPosition);
     
     const quantity = item.suggestedQuantity || item.quantity || 0;
-    doc.text(quantity.toString(), 110, yPosition);
-    doc.text(item.unit, 135, yPosition);
-    
-    // Limitar tamanho do fornecedor
-    const maxSupplierLength = 25;
-    const displaySupplier = item.supplier.length > maxSupplierLength 
-      ? item.supplier.substring(0, maxSupplierLength) + '...' 
-      : item.supplier;
-    
-    doc.text(displaySupplier, 170, yPosition);
+    doc.text(quantity.toString(), 120, yPosition);
+    doc.text(item.unit, 160, yPosition);
     
     yPosition += 10;
   });
@@ -130,7 +121,7 @@ export const generateShoppingListPDF = (items: ShoppingItem[]) => {
   yPosition += 15;
   doc.setFontSize(8);
   doc.setTextColor(100, 100, 100);
-  doc.text('OBSERVAÇÃO: Os valores serão definidos no momento da compra.', 20, yPosition);
+  doc.text('Observação: Os valores serão definidos no momento da compra.', 20, yPosition);
   
   // Footer
   doc.setFontSize(8);
@@ -152,13 +143,13 @@ export const generateCompleteReportPDF = (
   const pageHeight = doc.internal.pageSize.height;
   
   // Header simplificado
-  doc.setFillColor(233, 115, 22);
+  doc.setFillColor(234, 88, 12);
   doc.rect(0, 0, pageWidth, 25, 'F');
   
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont('helvetica', 'bold');
-  doc.text('STOCKELY - RELATÓRIO COMPLETO DE ANÁLISE', 20, 16);
+  doc.text('Stockely - Relatório Completo de Análise', 20, 16);
   
   doc.setTextColor(0, 0, 0);
   const today = new Date().toLocaleDateString('pt-BR');
@@ -183,21 +174,21 @@ export const generateCompleteReportPDF = (
   const lossRate = (movementSummary.totalValueLost / movementSummary.totalValueIn) * 100;
   const turnoverRate = movementSummary.totalExits / movementSummary.totalEntries;
   
-  doc.text(`📊 Total de Entradas: ${movementSummary.totalEntries} movimentações`, 25, yPosition);
-  doc.text(`💰 Valor: R$ ${movementSummary.totalValueIn.toFixed(2)}`, 130, yPosition);
+  doc.text(`Total de Entradas: ${movementSummary.totalEntries} movimentações`, 25, yPosition);
+  doc.text(`Valor: R$ ${movementSummary.totalValueIn.toFixed(2)}`, 130, yPosition);
   yPosition += 8;
   
-  doc.text(`📦 Total de Saídas: ${movementSummary.totalExits} movimentações`, 25, yPosition);
-  doc.text(`💰 Valor: R$ ${movementSummary.totalValueOut.toFixed(2)}`, 130, yPosition);
+  doc.text(`Total de Saídas: ${movementSummary.totalExits} movimentações`, 25, yPosition);
+  doc.text(`Valor: R$ ${movementSummary.totalValueOut.toFixed(2)}`, 130, yPosition);
   yPosition += 8;
   
-  doc.text(`⚠️ Total de Perdas: ${movementSummary.totalLosses} ocorrências`, 25, yPosition);
-  doc.text(`💰 Valor: R$ ${movementSummary.totalValueLost.toFixed(2)}`, 130, yPosition);
+  doc.text(`Total de Perdas: ${movementSummary.totalLosses} ocorrências`, 25, yPosition);
+  doc.text(`Valor: R$ ${movementSummary.totalValueLost.toFixed(2)}`, 130, yPosition);
   yPosition += 8;
   
   doc.setFont('helvetica', 'bold');
-  doc.text(`💡 Margem Líquida: R$ ${margin.toFixed(2)}`, 25, yPosition);
-  doc.text(`📈 Taxa de Perdas: ${lossRate.toFixed(1)}%`, 130, yPosition);
+  doc.text(`Margem Líquida: R$ ${margin.toFixed(2)}`, 25, yPosition);
+  doc.text(`Taxa de Perdas: ${lossRate.toFixed(1)}%`, 130, yPosition);
   yPosition += 15;
   
   // === ANÁLISE DE CONSUMO ===
@@ -327,41 +318,14 @@ export const generateCompleteReportPDF = (
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   
-  doc.text(`• Taxa de Perdas: ${lossRate.toFixed(1)}% (ideal: abaixo de 3%)`, 25, yPosition);
+  doc.text(`Taxa de Perdas: ${lossRate.toFixed(1)}% (ideal: abaixo de 3%)`, 25, yPosition);
   yPosition += 8;
-  doc.text(`• Giro de Estoque: ${turnoverRate.toFixed(1)}x (ideal: acima de 2x)`, 25, yPosition);
+  doc.text(`Giro de Estoque: ${turnoverRate.toFixed(1)}x (ideal: acima de 2x)`, 25, yPosition);
   yPosition += 8;
-  doc.text(`• Eficiência Operacional: ${((1 - lossRate/100) * 100).toFixed(1)}%`, 25, yPosition);
+  doc.text(`Eficiência Operacional: ${((1 - lossRate/100) * 100).toFixed(1)}%`, 25, yPosition);
   yPosition += 8;
-  doc.text(`• Margem de Contribuição: ${((margin/movementSummary.totalValueIn) * 100).toFixed(1)}%`, 25, yPosition);
+  doc.text(`Margem de Contribuição: ${((margin/movementSummary.totalValueIn) * 100).toFixed(1)}%`, 25, yPosition);
   yPosition += 15;
-  
-  // === RECOMENDAÇÕES ===
-  doc.setFontSize(14);
-  doc.setFont('helvetica', 'bold');
-  doc.setTextColor(233, 115, 22);
-  doc.text('5. RECOMENDAÇÕES', 20, yPosition);
-  yPosition += 15;
-  
-  doc.setFontSize(9);
-  doc.setFont('helvetica', 'normal');
-  doc.setTextColor(0, 0, 0);
-  
-  if (lossRate > 3) {
-    doc.text('⚠️ ALTA TAXA DE PERDAS: Revisar procedimentos de armazenamento e prazos de validade.', 25, yPosition);
-    yPosition += 8;
-  }
-  
-  if (turnoverRate < 2) {
-    doc.text('📦 BAIXO GIRO: Considerar reduzir pedidos ou diversificar cardápio.', 25, yPosition);
-    yPosition += 8;
-  }
-  
-  doc.text('✅ Implementar sistema de controle FIFO (Primeiro que entra, primeiro que sai).', 25, yPosition);
-  yPosition += 8;
-  doc.text('✅ Monitorar temperaturas de refrigeração diariamente.', 25, yPosition);
-  yPosition += 8;
-  doc.text('✅ Realizar inventários semanais para maior precisão.', 25, yPosition);
   
   // Footer
   doc.setFontSize(8);

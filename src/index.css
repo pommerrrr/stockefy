@@ -46,37 +46,37 @@
 
 :root {
   --radius: 0.5rem;
-  --background: #fafafa;
-  --foreground: #1f2937;
+  --background: #fefefe;
+  --foreground: #431407;
   --card: #ffffff;
-  --card-foreground: #1f2937;
+  --card-foreground: #431407;
   --popover: #ffffff;
-  --popover-foreground: #1f2937;
-  --primary: #e97316;
+  --popover-foreground: #431407;
+  --primary: #ea580c;
   --primary-foreground: #ffffff;
-  --secondary: #f3f4f6;
-  --secondary-foreground: #374151;
-  --muted: #f9fafb;
-  --muted-foreground: #6b7280;
-  --accent: #f3f4f6;
-  --accent-foreground: #1f2937;
-  --destructive: #ef4444;
-  --border: #e5e7eb;
-  --input: #e5e7eb;
-  --ring: #e97316;
-  --chart-1: #e97316;
-  --chart-2: #16a34a;
-  --chart-3: #3b82f6;
-  --chart-4: #f59e0b;
-  --chart-5: #8b5cf6;
-  --sidebar: #ffffff;
-  --sidebar-foreground: #1f2937;
-  --sidebar-primary: #e97316;
+  --secondary: #fb923c;
+  --secondary-foreground: #ffffff;
+  --muted: #fff7ed;
+  --muted-foreground: #9a3412;
+  --accent: #fed7aa;
+  --accent-foreground: #9a3412;
+  --destructive: #dc2626;
+  --border: #fed7aa;
+  --input: #ffffff;
+  --ring: #ea580c;
+  --chart-1: #ea580c;
+  --chart-2: #fb923c;
+  --chart-3: #fd9745;
+  --chart-4: #fed7aa;
+  --chart-5: #fff7ed;
+  --sidebar: #fff7ed;
+  --sidebar-foreground: #9a3412;
+  --sidebar-primary: #ea580c;
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #f3f4f6;
-  --sidebar-accent-foreground: #1f2937;
-  --sidebar-border: #e5e7eb;
-  --sidebar-ring: #e97316;
+  --sidebar-accent: #fed7aa;
+  --sidebar-accent-foreground: #9a3412;
+  --sidebar-border: #fed7aa;
+  --sidebar-ring: #ea580c;
 }
 
 .dark {
@@ -143,18 +143,51 @@
     @apply bg-white border-b border-border shadow-sm;
   }
   
-  /* Remove gradients and use solid colors */
+  /* Orange gradient system */
+  .gradient-primary {
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+  }
+  
+  .gradient-secondary {
+    background: linear-gradient(135deg, #fb923c 0%, #fd9745 100%);
+  }
+  
+  .gradient-accent {
+    background: linear-gradient(135deg, #fed7aa 0%, #fff7ed 100%);
+  }
+  
+  /* Button improvements */
   .btn-primary {
-    @apply bg-primary hover:bg-primary/90 text-primary-foreground;
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+    @apply text-white border-0 font-medium;
+    transition: all 0.2s ease;
+  }
+  
+  .btn-primary:hover {
+    background: linear-gradient(135deg, #dc2f02 0%, #ea580c 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4);
   }
   
   .btn-secondary {
-    @apply bg-secondary hover:bg-secondary/80 text-secondary-foreground;
+    background: linear-gradient(135deg, #fb923c 0%, #fd9745 100%);
+    @apply text-white border-0 font-medium;
   }
   
-  /* Clean card styles */
+  .btn-secondary:hover {
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(251, 146, 60, 0.3);
+  }
+  
+  /* Card improvements */
   .card-clean {
     @apply bg-card border border-border rounded-lg shadow-sm;
+  }
+  
+  .card-gradient {
+    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
+    @apply border border-border rounded-lg shadow-sm;
   }
   
   /* Tab improvements */
@@ -163,14 +196,42 @@
   }
   
   .tab-clean {
-    @apply px-4 py-2 rounded-md text-sm font-medium transition-colors;
+    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
   }
   
   .tab-clean-active {
-    @apply bg-primary text-primary-foreground;
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+    @apply text-white;
   }
   
   .tab-clean-inactive {
     @apply text-muted-foreground hover:text-foreground;
+    background: linear-gradient(135deg, #fed7aa 0%, #fff7ed 100%);
+  }
+  
+  /* Title improvements */
+  .page-title {
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    @apply text-3xl font-bold tracking-tight;
+  }
+  
+  /* Stats card improvements */
+  .stats-card {
+    @apply rounded-xl p-6 shadow-lg border border-border;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 20%, #fff7ed 100%);
+  }
+  
+  .stats-card-icon {
+    @apply w-12 h-12 rounded-lg flex items-center justify-center;
+    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+  }
+  
+  /* Form improvements */
+  .form-section {
+    @apply space-y-4 p-6 rounded-lg border border-border;
+    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 20%, #fff7ed 100%);
   }
 }
