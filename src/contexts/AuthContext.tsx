@@ -1,23 +1,22 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-}
-
-interface Organization {
-  id: string;
-  name: string;
-  type: string;
-}
+import React, { createContext, useContext, useEffect, useState } from 'react';
+import { User as FirebaseUser } from 'firebase/auth';
+import { 
+  auth, 
+  registerUser, 
+  loginUser, 
+  logoutUser, 
+  getUserOrganization, 
+  onAuthStateChange,
+  User,
+  Organization 
+} from '@/lib/firebase';
 
 interface AuthContextType {
   user: User | null;
   organization: Organization | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name: string, orgName: string, orgType: string) => Promise<void>;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (email: string, password: string, name: string, organizationName: string, organizationType: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
 
@@ -26,117 +25,144 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within AuthProvider');
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export function AuthProvider({ children }: AuthProviderProps) {
+export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [organization, setOrganization] = useState<Organization | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Simular carregamento inicial
-    const checkAuth = async () => {
-      try {
-        // Verificar localStorage para usuário logado
-        const savedUser = localStorage.getItem('stockely_user');
-        const savedOrg = localStorage.getItem('stockely_organization');
+    const unsubscribe = onAuthStateChange(async (firebaseUser: FirebaseUser | null) => {
+      console.log('Auth state changed:', firebaseUser?.email);
+      setLoading(true);
+      
+      if (firebaseUser) {
+        // Sempre define usuário básico primeiro
+        const basicUser = {
+          id: firebaseUser.uid,
+          email: firebaseUser.email!,
+          name: firebaseUser.displayName || 'Usuário',
+          createdAt: new Date(),
+          lastLogin: new Date(),
+          currentOrganizationId: ''
+        };
         
-        if (savedUser && savedOrg) {
-          setUser(JSON.parse(savedUser));
-          setOrganization(JSON.parse(savedOrg));
-        }
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-      } finally {
-        setLoading(false);
+        setUser(basicUser);
+        console.log('Basic user set:', basicUser.email);
+        
+        // Tenta buscar organização de forma não-bloqueante
+        setTimeout(async () => {
+          try {
+            const userData = await getUserOrganization(firebaseUser.uid);
+            
+            if (userData.success && userData.organization) {
+              console.log('Organization found, updating user');
+              setUser({
+                ...basicUser,
+                currentOrganizationId: userData.organization.id
+              });
+              setOrganization(userData.organization);
+            } else {
+              console.log('No organization found, keeping basic user');
+              setOrganization(null);
+            }
+          } catch (error) {
+            console.error('Error loading organization (non-blocking):', error);
+            setOrganization(null);
+          }
+        }, 100);
+        
+      } else {
+        console.log('User logged out');
+        setUser(null);
+        setOrganization(null);
       }
-    };
+      setLoading(false);
+    });
 
-    checkAuth();
+    return unsubscribe;
   }, []);
 
   const login = async (email: string, password: string) => {
+    console.log('Login attempt started for:', email);
     setLoading(true);
     
-    // Simular API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    if (email === 'demo@stockely.com' && password === 'demo123') {
-      const mockUser = {
-        id: '1',
-        email: 'demo@stockely.com',
-        name: 'Usuário Demo'
-      };
+    try {
+      const result = await loginUser(email, password);
+      console.log('Login result:', result);
       
-      const mockOrg = {
-        id: '1',
-        name: 'Restaurante Demo',
-        type: 'restaurante'
-      };
-      
-      setUser(mockUser);
-      setOrganization(mockOrg);
-      
-      localStorage.setItem('stockely_user', JSON.stringify(mockUser));
-      localStorage.setItem('stockely_organization', JSON.stringify(mockOrg));
-    } else {
-      throw new Error('Credenciais inválidas');
+      if (result.success && result.user) {
+        console.log('Setting user in context:', result.user.email);
+        setUser(result.user);
+        
+        // Organization loading is handled by onAuthStateChange
+        console.log('Login successful, auth state will update');
+        return { success: true };
+      } else {
+        console.error('Login failed:', result.error);
+        return result;
+      }
+    } catch (error: any) {
+      console.error('Login exception:', error);
+      return { success: false, error: error.message || 'Erro inesperado' };
+    } finally {
+      setLoading(false);
     }
-    
-    setLoading(false);
   };
 
-  const register = async (email: string, password: string, name: string, orgName: string, orgType: string) => {
+  const register = async (
+    email: string, 
+    password: string, 
+    name: string, 
+    organizationName: string, 
+    organizationType: string
+  ) => {
     setLoading(true);
-    
-    // Simular API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    const mockUser = {
-      id: Math.random().toString(36).substr(2, 9),
-      email,
-      name
-    };
-    
-    const mockOrg = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: orgName,
-      type: orgType
-    };
-    
-    setUser(mockUser);
-    setOrganization(mockOrg);
-    
-    localStorage.setItem('stockely_user', JSON.stringify(mockUser));
-    localStorage.setItem('stockely_organization', JSON.stringify(mockOrg));
-    
-    setLoading(false);
+    try {
+      const result = await registerUser(email, password, name, organizationName, organizationType);
+      
+      if (result.success && result.user && result.organization) {
+        setUser(result.user);
+        setOrganization(result.organization);
+      }
+      
+      return result;
+    } catch (error: any) {
+      return { success: false, error: error.message };
+    } finally {
+      setLoading(false);
+    }
   };
 
   const logout = async () => {
-    setUser(null);
-    setOrganization(null);
-    localStorage.removeItem('stockely_user');
-    localStorage.removeItem('stockely_organization');
+    setLoading(true);
+    try {
+      await logoutUser();
+      setUser(null);
+      setOrganization(null);
+    } catch (error) {
+      console.error('Logout error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const value: AuthContextType = {
+    user,
+    organization,
+    loading,
+    login,
+    register,
+    logout
   };
 
   return (
-    <AuthContext.Provider value={{
-      user,
-      organization,
-      loading,
-      login,
-      register,
-      logout
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );
-}
+};

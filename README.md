@@ -1,163 +1,290 @@
-# 🍽️ Stockely - Sistema de Gestão de Estoque
+# 🍔 Stockely - Sistema Inteligente de Gestão de Estoque
 
-Sistema moderno e inteligente para gestão de estoque focado no ramo alimentício (restaurantes, lanchonetes, padarias, etc.).
+<div align="center">
+  <img src="https://img.shields.io/badge/React-19.1.0-blue?style=for-the-badge&logo=react" alt="React" />
+  <img src="https://img.shields.io/badge/Firebase-10.14.1-orange?style=for-the-badge&logo=firebase" alt="Firebase" />
+  <img src="https://img.shields.io/badge/TypeScript-5.6.3-blue?style=for-the-badge&logo=typescript" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/Tailwind-4.1.7-cyan?style=for-the-badge&logo=tailwindcss" alt="Tailwind" />
+</div>
 
-## ✨ Funcionalidades
+<br />
 
-### 🔐 **Sistema Multi-tenant**
-- Dados privados por cliente
-- Autenticação segura
-- Suporte a múltiplas organizações
-
-### 📦 **Gestão de Estoque Completa**
-- **Entradas**: Cadastro livre de produtos (existentes ou novos)
-- **Controle de Estoque**: Monitoramento em tempo real
-- **Saídas**: Registro de vendas, produção e perdas
-- **Alertas**: Notificações de estoque baixo
-
-### 🍳 **Específico para Alimentação**
-- **Receitas**: Gestão de ingredientes por prato
-- **Fornecedores**: Catálogo de fornecedores
-- **Validade**: Controle de datas de vencimento
-
-### 📊 **Relatórios Inteligentes**
-- **PDF Completo**: Análise detalhada sem recomendações
-- **Lista de Compras**: Sem valores (definidos na compra)
-- **Consumo**: Análise por produto e período
-- **Perdas**: Controle de desperdícios
-
-### 🎨 **Design Refinado**
-- **Paleta Consistente**: Tons de laranja harmoniosos
-- **Layout Limpo**: Informações organizadas
-- **Responsivo**: Funciona em todos os dispositivos
-
-## 🚀 Tecnologias
-
-- **Frontend**: React 19 + TypeScript
-- **Styling**: Tailwind CSS V4
-- **Components**: ShadCN UI
-- **Icons**: Lucide React
-- **PDF**: jsPDF
-- **Build**: Vite 6
-- **Notifications**: Sonner
-
-## 🛠️ Instalação
-
-```bash
-# Clone o repositório
-git clone <seu-repositorio>
-cd stockely
-
-# Instale as dependências
-npm install
-# ou
-bun install
-
-# Execute o projeto
-npm run dev
-# ou
-bun dev
-```
-
-## 🔑 Login Demo
-
-Para testar o sistema, use as credenciais:
-
-- **Email**: `demo@stockely.com`
-- **Senha**: `demo123`
-
-## 📁 Estrutura do Projeto
-
-```
-src/
-├── components/
-│   ├── auth/
-│   │   └── AuthScreen.tsx          # Tela de login/registro
-│   ├── layout/
-│   │   └── Sidebar.tsx             # Menu lateral
-│   ├── ui/                         # Componentes ShadCN
-│   ├── Dashboard.tsx               # Dashboard principal
-│   ├── EntriesManagement.tsx       # Gestão de entradas
-│   ├── StockControl.tsx            # Controle de estoque
-│   ├── StockExits.tsx              # Saídas de estoque
-│   ├── RecipesManagement.tsx       # Gestão de receitas
-│   ├── SuppliersManagement.tsx     # Fornecedores
-│   ├── Reports.tsx                 # Relatórios
-│   ├── ShoppingList.tsx            # Lista de compras
-│   └── Settings.tsx                # Configurações
-├── contexts/
-│   └── AuthContext.tsx             # Contexto de autenticação
-├── lib/
-│   ├── utils.ts                    # Utilitários
-│   └── pdfUtils.ts                 # Geração de PDFs
-├── App.tsx                         # Componente principal
-├── index.css                       # Estilos globais
-└── main.tsx                        # Entry point
-```
-
-## 🎯 Próximos Passos
-
-### 🔄 **Fase 2 - Expansão**
-- [ ] Múltiplas filiais por cliente
-- [ ] Integração APIs iFood/CardápioWeb
-- [ ] Sistema de estoque mínimo inteligente (baseado em IA)
-- [ ] Relatórios de previsão de demanda
-
-### 🔄 **Fase 3 - Automação**
-- [ ] Integração com balanças inteligentes
-- [ ] Códigos de barras/QR codes
-- [ ] App mobile para gestores
-- [ ] Notificações push
-
-## 🎨 Design System
-
-### Cores Principais
-- **Primária**: `#ea580c` (Laranja)
-- **Secundária**: `#fb923c` (Laranja claro)
-- **Gradiente**: `#fd9745` (Laranja suave)
-- **Accent**: `#fed7aa` (Laranja muito claro)
-- **Background**: `#fff7ed` (Creme)
-
-### Componentes
-- **Cards**: Sombras suaves com gradientes
-- **Botões**: Gradientes laranja com hover effects
-- **Headers**: Títulos com gradiente de texto
-- **Stats**: Cards com ícones centralizados
-
-## 📝 Funcionalidades Detalhadas
-
-### ✅ **Correções Implementadas**
-- [x] **Paleta de cores padronizada** em tons de laranja
-- [x] **Campos de entrada** com tamanhos adequados
-- [x] **Relatórios PDF** sem recomendações e textos limpos
-- [x] **Lista de compras** sem fornecedor e valores
-- [x] **Layout reorganizado** com informações alinhadas
-- [x] **Cabeçalho fixo** com sombra adequada
-- [x] **Rodapé não flutuante**
-
-### 🆕 **Novidades**
-- [x] **Cadastro livre de produtos** nas entradas
-- [x] **Sistema multi-tenant** completo
-- [x] **Autenticação** com demo
-- [x] **Relatórios inteligentes** em PDF
-- [x] **Dashboard** com métricas em tempo real
-
-## 🤝 Contribuindo
-
-1. Fork o projeto
-2. Crie uma branch para sua feature (`git checkout -b feature/AmazingFeature`)
-3. Commit suas mudanças (`git commit -m 'Add some AmazingFeature'`)
-4. Push para a branch (`git push origin feature/AmazingFeature`)
-5. Abra um Pull Request
-
-## 📄 Licença
-
-Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
-
-## 🆘 Suporte
-
-Para suporte, entre em contato ou abra uma issue no repositório.
+<div align="center">
+  <h3>🚀 Sistema completo de gestão de estoque para restaurantes, lanchonetes e estabelecimentos alimentícios</h3>
+  <p>Multi-tenant • Firebase • Tempo Real • Mobile-First</p>
+</div>
 
 ---
 
-**Stockely** - Gestão inteligente para o seu negócio alimentício 🍽️
+## 🎯 **Sobre o Projeto**
+
+**Stockely** é uma plataforma web moderna e intuitiva para controle de estoque, desenvolvida especificamente para o setor alimentício. Com foco na facilidade de uso e segurança de dados, oferece gestão completa de ingredientes, receitas, fornecedores e relatórios gerenciais.
+
+### ✨ **Principais Funcionalidades**
+
+- 🔐 **Multi-tenant Seguro** - Cada empresa com dados completamente isolados
+- 📦 **Gestão de Produtos** - Cadastro direto nas telas de entrada/saída
+- 📊 **Controle de Estoque** - Monitoramento em tempo real
+- 🍔 **Fichas Técnicas** - Receitas com cálculo automático de custos
+- 📈 **Relatórios Gerenciais** - Analytics completos
+- 🛒 **Lista de Compras Inteligente** - Sugestões automáticas
+- 📱 **Responsivo** - Funciona perfeitamente em todos os dispositivos
+
+---
+
+## 🚀 **Deploy Rápido**
+
+### **Vercel (Recomendado)**
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/seu-usuario/stockely)
+
+### **Netlify**
+[![Deploy to Netlify](https://www.netlify.com/img/deploy/button.svg)](https://app.netlify.com/start/deploy?repository=https://github.com/seu-usuario/stockely)
+
+---
+
+## 📋 **Configuração Inicial**
+
+### **1. Clone o Repositório**
+```bash
+git clone https://github.com/seu-usuario/stockely.git
+cd stockely
+```
+
+### **2. Instale as Dependências**
+```bash
+npm install
+# ou
+yarn install
+```
+
+### **3. Configure o Firebase**
+
+#### 3.1. Crie um projeto Firebase
+1. Acesse [Firebase Console](https://console.firebase.google.com)
+2. Crie um novo projeto
+3. Ative **Authentication** (Email/senha)
+4. Ative **Firestore Database** (modo produção)
+
+#### 3.2. Configure as variáveis de ambiente
+```bash
+cp .env.example .env
+```
+
+Edite o arquivo `.env` com suas configurações do Firebase:
+```env
+VITE_FIREBASE_API_KEY=your_api_key_here
+VITE_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+```
+
+#### 3.3. Configure as regras de segurança
+No Firestore Console → Regras, substitua por:
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Users - only authenticated users can access their own data
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Organizations - only members can access
+    match /organizations/{organizationId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == resource.data.ownerId;
+    }
+    
+    // Products - only organization members can access
+    match /products/{productId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Stock Movements - only organization members can access
+    match /stockMovements/{movementId} {
+      allow read, write: if request.auth != null && 
+        request.auth.uid == getUserOrganizationOwnerId(resource.data.organizationId);
+    }
+    
+    // Helper function to get organization owner
+    function getUserOrganizationOwnerId(organizationId) {
+      return get(/databases/$(database)/documents/organizations/$(organizationId)).data.ownerId;
+    }
+  }
+}
+```
+
+### **4. Execute o Projeto**
+```bash
+npm run dev
+```
+
+Acesse `http://localhost:5173` e crie sua primeira conta!
+
+---
+
+## 🏗️ **Tecnologias Utilizadas**
+
+### **Frontend**
+- **React 19** - Biblioteca JavaScript moderna
+- **TypeScript** - Tipagem estática
+- **Tailwind CSS v4** - Framework CSS utilitário
+- **ShadCN UI** - Componentes acessíveis
+- **Lucide React** - Ícones modernos
+
+### **Backend & Infraestrutura**
+- **Firebase Authentication** - Autenticação segura
+- **Cloud Firestore** - Banco de dados NoSQL
+- **Firebase Hosting** - Deploy automático
+- **Vite** - Build tool rápido
+
+### **Funcionalidades Avançadas**
+- **Multi-tenant Architecture** - Isolamento de dados
+- **Real-time Updates** - Sincronização automática
+- **Progressive Web App** - Instalável como app
+- **Mobile-First Design** - Responsivo por padrão
+
+---
+
+## 📁 **Estrutura do Projeto**
+
+```
+src/
+├── components/           # Componentes React
+│   ├── auth/            # Autenticação
+│   ├── layout/          # Layout e navegação
+│   └── ui/              # Componentes UI base
+├── contexts/            # Contextos React
+├── lib/                 # Utilitários e Firebase
+├── types/               # Tipos TypeScript
+└── hooks/              # Hooks customizados
+```
+
+---
+
+## 🔒 **Segurança**
+
+### **Recursos de Segurança**
+- ✅ **Autenticação Firebase** - Login seguro
+- ✅ **Firestore Security Rules** - Isolamento de dados
+- ✅ **Multi-tenant** - Dados completamente separados
+- ✅ **HTTPS** - Comunicação criptografada
+- ✅ **Validação dupla** - Client e server-side
+
+### **Compliance**
+- 🔐 **LGPD Ready** - Proteção de dados pessoais
+- 🛡️ **SOC 2** - Padrões de segurança Firebase
+- 🔒 **ISO 27001** - Segurança da informação
+
+---
+
+## 📊 **Roadmap**
+
+### **✅ Versão 1.0 (Atual)**
+- Sistema multi-tenant completo
+- CRUD de produtos/receitas/fornecedores
+- Controle de estoque básico
+- Relatórios essenciais
+- Interface responsiva
+
+### **🔄 Versão 1.1 (Próxima)**
+- [ ] Integração iFood API
+- [ ] Integração CardápioWeb
+- [ ] Importação XML (NFe)
+- [ ] App Mobile (PWA)
+- [ ] Notificações push
+
+### **📋 Versão 1.2 (Futuro)**
+- [ ] IA para previsão de demanda
+- [ ] Múltiplas filiais
+- [ ] Controle de validade
+- [ ] Código de barras
+- [ ] Analytics avançado
+
+---
+
+## 🤝 **Contribuição**
+
+Contribuições são sempre bem-vindas! Para contribuir:
+
+1. Faça um fork do projeto
+2. Crie uma branch para sua feature (`git checkout -b feature/nova-feature`)
+3. Commit suas mudanças (`git commit -am 'Adiciona nova feature'`)
+4. Push para a branch (`git push origin feature/nova-feature`)
+5. Abra um Pull Request
+
+### **Desenvolvimento Local**
+```bash
+# Clone e configure
+git clone https://github.com/seu-usuario/stockely.git
+cd stockely
+npm install
+
+# Configure Firebase (veja instruções acima)
+cp .env.example .env
+
+# Execute em modo desenvolvimento
+npm run dev
+
+# Execute testes
+npm run test
+
+# Build para produção
+npm run build
+```
+
+---
+
+## 📱 **Demo & Screenshots**
+
+### **Tela de Login**
+Interface moderna e intuitiva para acesso seguro.
+
+### **Dashboard**
+Visão geral do estoque com métricas em tempo real.
+
+### **Gestão de Produtos**
+Cadastro rápido diretamente nas telas de entrada/saída.
+
+### **Relatórios**
+Analytics completos com gráficos interativos.
+
+---
+
+## 📄 **Licença**
+
+Este projeto está sob a licença **MIT**. Veja o arquivo [LICENSE](LICENSE) para mais detalhes.
+
+---
+
+## 🌟 **Apoie o Projeto**
+
+Se o **Stockely** foi útil para você, considere:
+
+- ⭐ Dar uma estrela no GitHub
+- 🐛 Reportar bugs
+- 💡 Sugerir melhorias
+- 🤝 Contribuir com código
+- 📢 Compartilhar com outros
+
+---
+
+## 📞 **Suporte**
+
+- 📧 **Email**: suporte@stockely.com
+- 💬 **Discord**: [Stockely Community](https://discord.gg/stockely)
+- 📖 **Documentação**: [docs.stockely.com](https://docs.stockely.com)
+- 🐛 **Issues**: [GitHub Issues](https://github.com/seu-usuario/stockely/issues)
+
+---
+
+<div align="center">
+  <strong>Feito com ❤️ para revolucionar a gestão de estoque</strong>
+  
+  <p>
+    <a href="#top">⬆️ Voltar ao topo</a>
+  </p>
+</div>

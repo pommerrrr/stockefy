@@ -107,7 +107,7 @@ export function EntriesManagement() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-primary">
+          <h1 className="page-title">
             Gestão de Entradas
           </h1>
           <p className="text-muted-foreground">

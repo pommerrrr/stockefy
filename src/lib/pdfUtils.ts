@@ -174,21 +174,21 @@ export const generateCompleteReportPDF = (
   const lossRate = (movementSummary.totalValueLost / movementSummary.totalValueIn) * 100;
   const turnoverRate = movementSummary.totalExits / movementSummary.totalEntries;
   
-  doc.text(`Total de Entradas: ${movementSummary.totalEntries} movimentações`, 25, yPosition);
-  doc.text(`Valor: R$ ${movementSummary.totalValueIn.toFixed(2)}`, 130, yPosition);
+  doc.text(`📊 Total de Entradas: ${movementSummary.totalEntries} movimentações`, 25, yPosition);
+  doc.text(`💰 Valor: R$ ${movementSummary.totalValueIn.toFixed(2)}`, 130, yPosition);
   yPosition += 8;
   
-  doc.text(`Total de Saídas: ${movementSummary.totalExits} movimentações`, 25, yPosition);
-  doc.text(`Valor: R$ ${movementSummary.totalValueOut.toFixed(2)}`, 130, yPosition);
+  doc.text(`📦 Total de Saídas: ${movementSummary.totalExits} movimentações`, 25, yPosition);
+  doc.text(`💰 Valor: R$ ${movementSummary.totalValueOut.toFixed(2)}`, 130, yPosition);
   yPosition += 8;
   
-  doc.text(`Total de Perdas: ${movementSummary.totalLosses} ocorrências`, 25, yPosition);
-  doc.text(`Valor: R$ ${movementSummary.totalValueLost.toFixed(2)}`, 130, yPosition);
+  doc.text(`⚠️ Total de Perdas: ${movementSummary.totalLosses} ocorrências`, 25, yPosition);
+  doc.text(`💰 Valor: R$ ${movementSummary.totalValueLost.toFixed(2)}`, 130, yPosition);
   yPosition += 8;
   
   doc.setFont('helvetica', 'bold');
-  doc.text(`Margem Líquida: R$ ${margin.toFixed(2)}`, 25, yPosition);
-  doc.text(`Taxa de Perdas: ${lossRate.toFixed(1)}%`, 130, yPosition);
+  doc.text(`💡 Margem Líquida: R$ ${margin.toFixed(2)}`, 25, yPosition);
+  doc.text(`📈 Taxa de Perdas: ${lossRate.toFixed(1)}%`, 130, yPosition);
   yPosition += 15;
   
   // === ANÁLISE DE CONSUMO ===
@@ -318,13 +318,13 @@ export const generateCompleteReportPDF = (
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(0, 0, 0);
   
-  doc.text(`Taxa de Perdas: ${lossRate.toFixed(1)}% (ideal: abaixo de 3%)`, 25, yPosition);
+  doc.text(`• Taxa de Perdas: ${lossRate.toFixed(1)}% (ideal: abaixo de 3%)`, 25, yPosition);
   yPosition += 8;
-  doc.text(`Giro de Estoque: ${turnoverRate.toFixed(1)}x (ideal: acima de 2x)`, 25, yPosition);
+  doc.text(`• Giro de Estoque: ${turnoverRate.toFixed(1)}x (ideal: acima de 2x)`, 25, yPosition);
   yPosition += 8;
-  doc.text(`Eficiência Operacional: ${((1 - lossRate/100) * 100).toFixed(1)}%`, 25, yPosition);
+  doc.text(`• Eficiência Operacional: ${((1 - lossRate/100) * 100).toFixed(1)}%`, 25, yPosition);
   yPosition += 8;
-  doc.text(`Margem de Contribuição: ${((margin/movementSummary.totalValueIn) * 100).toFixed(1)}%`, 25, yPosition);
+  doc.text(`• Margem de Contribuição: ${((margin/movementSummary.totalValueIn) * 100).toFixed(1)}%`, 25, yPosition);
   yPosition += 15;
   
   // Footer
