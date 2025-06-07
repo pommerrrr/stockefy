@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { toast } from 'sonner';
-import { Plus, Upload, FileText, Calendar, TrendingUp, Package } from 'lucide-react';
+import { Plus, Upload, FileText, Calendar, TrendingUp } from 'lucide-react';
 
 interface Product {
   id: number;
@@ -107,7 +107,7 @@ export function EntriesManagement() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="page-title">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-500 bg-clip-text text-transparent">
             Gestão de Entradas
           </h1>
           <p className="text-muted-foreground">
@@ -118,7 +118,7 @@ export function EntriesManagement() {
         <div className="flex gap-3">
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="btn-primary">
+              <Button className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Entrada
               </Button>
@@ -135,7 +135,7 @@ export function EntriesManagement() {
       <Card className="border-0 shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-green-600" />
+            <Upload className="w-5 h-5 text-green-500" />
             Importação de XML
           </CardTitle>
           <CardDescription>
@@ -179,8 +179,8 @@ export function EntriesManagement() {
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-7 h-7 text-orange-600" />
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-100 to-blue-200 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-7 h-7 text-blue-600" />
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-lg font-semibold">{entry.productName}</h3>
@@ -250,7 +250,6 @@ function EntryFormDialog({ onSave, onCancel }: EntryFormDialogProps) {
     invoice: '',
     notes: ''
   });
-  const [isAddingNewProduct, setIsAddingNewProduct] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -259,16 +258,6 @@ function EntryFormDialog({ onSave, onCancel }: EntryFormDialogProps) {
       return;
     }
     onSave(formData);
-  };
-
-  const handleProductSelect = (value: string) => {
-    if (value === '_new_product_') {
-      setIsAddingNewProduct(true);
-      setFormData({ ...formData, productName: '' });
-    } else {
-      setIsAddingNewProduct(false);
-      setFormData({ ...formData, productName: value });
-    }
   };
 
   return (
@@ -284,51 +273,21 @@ function EntryFormDialog({ onSave, onCancel }: EntryFormDialogProps) {
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="product">Produto *</Label>
-            <Tabs value={isAddingNewProduct ? "new" : "existing"} onValueChange={(value) => {
-              setIsAddingNewProduct(value === "new");
-              if (value === "existing") {
-                setFormData({ ...formData, productName: '' });
-              }
-            }}>
-              <TabsList className="grid w-full grid-cols-2 h-10">
-                <TabsTrigger value="existing" className="text-sm">Produto Existente</TabsTrigger>
-                <TabsTrigger value="new" className="text-sm">Novo Produto</TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="existing" className="space-y-2">
-                <Select value={formData.productName} onValueChange={handleProductSelect}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o produto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockProducts.map((product) => (
-                      <SelectItem key={product.id} value={product.name}>
-                        <div className="flex items-center gap-2">
-                          <span>{product.name}</span>
-                          <Badge variant="outline" className="text-xs">{product.category}</Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </TabsContent>
-              
-              <TabsContent value="new" className="space-y-2">
-                <Input
-                  placeholder="Digite o nome do novo produto"
-                  value={formData.productName}
-                  onChange={(e) => setFormData({ ...formData, productName: e.target.value })}
-                />
-                <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-green-600" />
-                    <p className="text-sm text-green-700">
-                      <strong>Novo produto:</strong> Será adicionado automaticamente ao sistema
-                    </p>
-                  </div>
-                </div>
-              </TabsContent>
-            </Tabs>
+            <Select value={formData.productName} onValueChange={(value) => setFormData({ ...formData, productName: value })}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione o produto" />
+              </SelectTrigger>
+              <SelectContent>
+                {mockProducts.map((product) => (
+                  <SelectItem key={product.id} value={product.name}>
+                    <div className="flex items-center gap-2">
+                      <span>{product.name}</span>
+                      <Badge variant="outline" className="text-xs">{product.category}</Badge>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
           <div className="space-y-2">
@@ -428,7 +387,7 @@ function EntryFormDialog({ onSave, onCancel }: EntryFormDialogProps) {
           <Button type="button" variant="outline" onClick={onCancel}>
             Cancelar
           </Button>
-          <Button type="submit" className="btn-primary">
+          <Button type="submit">
             Registrar Entrada
           </Button>
         </div>

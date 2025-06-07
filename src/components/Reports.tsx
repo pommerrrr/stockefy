@@ -6,7 +6,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { generateCompleteReportPDF, downloadPDF } from '@/lib/pdfUtils';
 import { 
   BarChart3, 
   TrendingUp, 
@@ -98,10 +97,14 @@ export function Reports() {
   const [purchaseDate, setPurchaseDate] = useState('');
   const [demandIncrease, setDemandIncrease] = useState(0);
 
-  const handleExportCompleteReport = () => {
-    const doc = generateCompleteReportPDF(mockConsumptionData, mockMovementSummary);
-    const today = new Date().toISOString().split('T')[0];
-    downloadPDF(doc, `relatorio-completo-${today}.pdf`);
+  const handleExportReport = () => {
+    // Simular download de relatório
+    alert('Relatório exportado com sucesso! (funcionalidade simulada)');
+  };
+
+  const handleExportShoppingList = () => {
+    // Simular download da lista de compras
+    alert('Lista de compras exportada com sucesso! (funcionalidade simulada)');
   };
 
   const getPriorityColor = (priority: string) => {
@@ -136,7 +139,7 @@ export function Reports() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="page-title">
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-indigo-600 to-indigo-500 bg-clip-text text-transparent">
             Relatórios e Análises
           </h1>
           <p className="text-muted-foreground">
@@ -144,9 +147,9 @@ export function Reports() {
           </p>
         </div>
         
-        <Button onClick={handleExportCompleteReport} className="btn-primary">
+        <Button onClick={handleExportReport} className="bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-600 hover:to-indigo-700">
           <Download className="w-4 h-4 mr-2" />
-          Exportar Relatório Completo (PDF)
+          Exportar Relatório
         </Button>
       </div>
 
@@ -200,27 +203,27 @@ export function Reports() {
         <TabsContent value="overview" className="space-y-6">
           {/* Cards de resumo */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-800">Entradas</CardTitle>
-                <TrendingUp className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-medium text-green-800">Entradas</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-900">{mockMovementSummary.totalEntries}</div>
-                <p className="text-xs text-orange-600">
+                <div className="text-2xl font-bold text-green-900">{mockMovementSummary.totalEntries}</div>
+                <p className="text-xs text-green-600">
                   R$ {mockMovementSummary.totalValueIn.toLocaleString('pt-BR')}
                 </p>
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-100 to-orange-200">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-800">Saídas</CardTitle>
-                <TrendingDown className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-medium text-blue-800">Saídas</CardTitle>
+                <TrendingDown className="h-4 w-4 text-blue-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-900">{mockMovementSummary.totalExits}</div>
-                <p className="text-xs text-orange-600">
+                <div className="text-2xl font-bold text-blue-900">{mockMovementSummary.totalExits}</div>
+                <p className="text-xs text-blue-600">
                   R$ {mockMovementSummary.totalValueOut.toLocaleString('pt-BR')}
                 </p>
               </CardContent>
@@ -239,16 +242,16 @@ export function Reports() {
               </CardContent>
             </Card>
             
-            <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-200 to-orange-300">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium text-orange-800">Margem</CardTitle>
-                <DollarSign className="h-4 w-4 text-orange-600" />
+                <CardTitle className="text-sm font-medium text-purple-800">Margem</CardTitle>
+                <DollarSign className="h-4 w-4 text-purple-600" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold text-orange-900">
+                <div className="text-2xl font-bold text-purple-900">
                   R$ {(mockMovementSummary.totalValueIn - mockMovementSummary.totalValueOut - mockMovementSummary.totalValueLost).toFixed(2)}
                 </div>
-                <p className="text-xs text-orange-600">
+                <p className="text-xs text-purple-600">
                   Resultado líquido
                 </p>
               </CardContent>
@@ -276,7 +279,7 @@ export function Reports() {
                       </div>
                       <div className="w-full bg-gray-200 rounded-full h-3">
                         <div 
-                          className="bg-gradient-to-r from-orange-500 to-orange-600 h-3 rounded-full transition-all duration-300" 
+                          className="bg-gradient-to-r from-indigo-500 to-indigo-600 h-3 rounded-full transition-all duration-300" 
                           style={{ width: `${item.percentage}%` }}
                         />
                       </div>
@@ -331,7 +334,7 @@ export function Reports() {
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-lg">Total Consumido:</span>
-                    <span className="font-bold text-xl text-orange-600">
+                    <span className="font-bold text-xl text-indigo-600">
                       R$ {mockConsumptionData.reduce((total, item) => total + item.cost, 0).toFixed(2)}
                     </span>
                   </div>
@@ -402,24 +405,24 @@ export function Reports() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center p-6 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
-                  <TrendingUp className="w-8 h-8 text-orange-600 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-orange-600">
+                <div className="text-center p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                  <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-green-600">
                     {mockMovementSummary.totalEntries}
                   </div>
                   <div className="text-sm text-muted-foreground">Entradas</div>
-                  <div className="text-lg font-semibold text-orange-600">
+                  <div className="text-lg font-semibold text-green-600">
                     R$ {mockMovementSummary.totalValueIn.toLocaleString('pt-BR')}
                   </div>
                 </div>
                 
-                <div className="text-center p-6 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl border border-orange-300">
-                  <TrendingDown className="w-8 h-8 text-orange-700 mx-auto mb-2" />
-                  <div className="text-2xl font-bold text-orange-700">
+                <div className="text-center p-6 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                  <TrendingDown className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <div className="text-2xl font-bold text-blue-600">
                     {mockMovementSummary.totalExits}
                   </div>
                   <div className="text-sm text-muted-foreground">Saídas</div>
-                  <div className="text-lg font-semibold text-orange-700">
+                  <div className="text-lg font-semibold text-blue-600">
                     R$ {mockMovementSummary.totalValueOut.toLocaleString('pt-BR')}
                   </div>
                 </div>
@@ -517,7 +520,7 @@ export function Reports() {
                     Baseada no consumo histórico e estoque mínimo configurado
                   </CardDescription>
                 </div>
-                <Button onClick={handleExportCompleteReport} variant="outline">
+                <Button onClick={handleExportShoppingList} variant="outline">
                   <Download className="w-4 h-4 mr-2" />
                   Exportar Lista
                 </Button>
@@ -528,8 +531,8 @@ export function Reports() {
                 {mockShoppingList.map((item, index) => (
                   <div key={index} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gradient-to-br from-orange-100 to-orange-200 rounded-lg flex items-center justify-center">
-                        <Package className="w-6 h-6 text-orange-600" />
+                      <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                        <Package className="w-6 h-6 text-blue-600" />
                       </div>
                       <div>
                         <h4 className="font-semibold">{item.item}</h4>
@@ -563,7 +566,7 @@ export function Reports() {
                 <div className="border-t pt-4">
                   <div className="flex justify-between items-center">
                     <span className="font-semibold text-lg">Custo Total Estimado:</span>
-                    <span className="font-bold text-2xl text-orange-600">
+                    <span className="font-bold text-2xl text-indigo-600">
                       R$ {totalShoppingCost.toFixed(2)}
                     </span>
                   </div>

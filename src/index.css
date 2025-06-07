@@ -45,38 +45,38 @@
 }
 
 :root {
-  --radius: 0.5rem;
-  --background: #fefefe;
-  --foreground: #431407;
-  --card: #ffffff;
-  --card-foreground: #431407;
-  --popover: #ffffff;
-  --popover-foreground: #431407;
-  --primary: #ea580c;
-  --primary-foreground: #ffffff;
-  --secondary: #fb923c;
-  --secondary-foreground: #ffffff;
-  --muted: #fff7ed;
-  --muted-foreground: #9a3412;
-  --accent: #fed7aa;
-  --accent-foreground: #9a3412;
-  --destructive: #dc2626;
-  --border: #fed7aa;
-  --input: #ffffff;
-  --ring: #ea580c;
-  --chart-1: #ea580c;
-  --chart-2: #fb923c;
-  --chart-3: #fd9745;
-  --chart-4: #fed7aa;
-  --chart-5: #fff7ed;
-  --sidebar: #fff7ed;
-  --sidebar-foreground: #9a3412;
-  --sidebar-primary: #ea580c;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #fed7aa;
-  --sidebar-accent-foreground: #9a3412;
-  --sidebar-border: #fed7aa;
-  --sidebar-ring: #ea580c;
+  --radius: 1rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.7095 0.1628 244.91);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
@@ -118,120 +118,6 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background text-foreground font-sans min-h-screen;
-  }
-  
-  /* Layout improvements */
-  .app-container {
-    @apply min-h-screen flex flex-col;
-  }
-  
-  .main-content {
-    @apply flex-1 flex;
-  }
-  
-  .content-area {
-    @apply flex-1 flex flex-col;
-  }
-  
-  .page-content {
-    @apply flex-1 overflow-auto;
-  }
-  
-  /* Header improvements */
-  .app-header {
-    @apply bg-white border-b border-border shadow-sm;
-  }
-  
-  /* Orange gradient system */
-  .gradient-primary {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-  }
-  
-  .gradient-secondary {
-    background: linear-gradient(135deg, #fb923c 0%, #fd9745 100%);
-  }
-  
-  .gradient-accent {
-    background: linear-gradient(135deg, #fed7aa 0%, #fff7ed 100%);
-  }
-  
-  /* Button improvements */
-  .btn-primary {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    @apply text-white border-0 font-medium;
-    transition: all 0.2s ease;
-  }
-  
-  .btn-primary:hover {
-    background: linear-gradient(135deg, #dc2f02 0%, #ea580c 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4);
-  }
-  
-  .btn-secondary {
-    background: linear-gradient(135deg, #fb923c 0%, #fd9745 100%);
-    @apply text-white border-0 font-medium;
-  }
-  
-  .btn-secondary:hover {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(251, 146, 60, 0.3);
-  }
-  
-  /* Card improvements */
-  .card-clean {
-    @apply bg-card border border-border rounded-lg shadow-sm;
-  }
-  
-  .card-gradient {
-    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-    @apply border border-border rounded-lg shadow-sm;
-  }
-  
-  /* Tab improvements */
-  .tabs-clean {
-    @apply bg-muted rounded-lg p-1;
-  }
-  
-  .tab-clean {
-    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
-  }
-  
-  .tab-clean-active {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    @apply text-white;
-  }
-  
-  .tab-clean-inactive {
-    @apply text-muted-foreground hover:text-foreground;
-    background: linear-gradient(135deg, #fed7aa 0%, #fff7ed 100%);
-  }
-  
-  /* Title improvements */
-  .page-title {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    @apply text-3xl font-bold tracking-tight;
-  }
-  
-  /* Stats card improvements */
-  .stats-card {
-    @apply rounded-xl p-6 shadow-lg border border-border;
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 20%, #fff7ed 100%);
-  }
-  
-  .stats-card-icon {
-    @apply w-12 h-12 rounded-lg flex items-center justify-center;
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-  }
-  
-  /* Form improvements */
-  .form-section {
-    @apply space-y-4 p-6 rounded-lg border border-border;
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 20%, #fff7ed 100%);
+    @apply bg-background text-foreground font-sans;
   }
 }
