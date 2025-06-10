@@ -120,7 +120,7 @@ function AppContent() {
   // Authenticated - show main app
   return (
     <AppContext.Provider value={{ navigateToEntries, navigateToRecipes, navigateToReports }}>
-      <div className="flex h-screen bg-gradient-to-br from-gray-50 to-gray-100">
+      <div className="app-container">
         <Sidebar currentPage={currentPage} onPageChange={(page: Page) => setCurrentPage(page)} />
         
         <div className="flex-1 flex flex-col">
@@ -129,10 +129,10 @@ function AppContent() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-lg font-semibold text-gray-900">
-                  {organization.name}
+                  {organization?.name || 'Stockely'}
                 </h1>
                 <p className="text-sm text-gray-500 capitalize">
-                  {organization.type}
+                  {organization?.type || 'Sistema de Gestão'}
                 </p>
               </div>
               

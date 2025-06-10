@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { generateShoppingListPDF, downloadPDF } from '@/lib/pdfUtils';
 import { 
   ShoppingCart, 
   Calculator, 
@@ -17,7 +18,8 @@ import {
   AlertTriangle,
   Truck,
   CheckCircle,
-  Clock
+  Clock,
+  FileText
 } from 'lucide-react';
 
 interface ShoppingItem {
@@ -138,7 +140,7 @@ export function ShoppingList() {
     // Aqui seria implementada a lógica de recálculo real
   };
 
-  const exportList = () => {
+  const exportCSV = () => {
     const selectedItems = items.filter(item => item.selected);
     const csvContent = [
       ['Produto', 'Quantidade', 'Unidade', 'Fornecedor', 'Custo Estimado', 'Prioridade'],
@@ -159,6 +161,18 @@ export function ShoppingList() {
     a.download = `lista-compras-${new Date().toISOString().split('T')[0]}.csv`;
     a.click();
     window.URL.revokeObjectURL(url);
+  };
+
+  const exportPDF = () => {
+    const selectedItems = items.filter(item => item.selected);
+    if (selectedItems.length === 0) {
+      alert('Selecione pelo menos um item para exportar');
+      return;
+    }
+    
+    const doc = generateShoppingListPDF(selectedItems);
+    const today = new Date().toISOString().split('T')[0];
+    downloadPDF(doc, `lista-compras-${today}.pdf`);
   };
 
   const getPriorityColor = (priority: string) => {
@@ -214,7 +228,7 @@ export function ShoppingList() {
     <div className="p-8 space-y-6">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+          <h1 className="page-title">
             Lista de Compras Inteligente
           </h1>
           <p className="text-muted-foreground">
@@ -223,11 +237,15 @@ export function ShoppingList() {
         </div>
         
         <div className="flex gap-3">
-          <Button onClick={exportList} variant="outline" disabled={selectedItems.length === 0}>
-            <Download className="w-4 h-4 mr-2" />
-            Exportar Lista
+          <Button onClick={exportPDF} variant="outline" disabled={selectedItems.length === 0}>
+            <FileText className="w-4 h-4 mr-2" />
+            Exportar PDF
           </Button>
-          <Button onClick={recalculateList} className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700">
+          <Button onClick={exportCSV} variant="outline" disabled={selectedItems.length === 0}>
+            <Download className="w-4 h-4 mr-2" />
+            Exportar CSV
+          </Button>
+          <Button onClick={recalculateList} className="btn-primary">
             <Calculator className="w-4 h-4 mr-2" />
             Recalcular
           </Button>
