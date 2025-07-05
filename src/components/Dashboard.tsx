@@ -37,7 +37,6 @@ export function Dashboard() {
       localStorage.setItem('firebase-indexes-alert-shown', 'true');
     }
   }, [loading]);
-
   
   if (loading) {
     return (
