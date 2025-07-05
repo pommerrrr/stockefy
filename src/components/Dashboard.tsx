@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -26,10 +26,10 @@ import {
 export function Dashboard() {
   const { navigateToEntries, navigateToRecipes, navigateToReports } = useAppContext();
   const { loading, ...stats } = useDashboardStats();
-  const [showIndexAlert, setShowIndexAlert] = React.useState(false);
+  const [showIndexAlert, setShowIndexAlert] = useState(false);
   
   // Mostrar alerta de índices se necessário
-  React.useEffect(() => {
+  useEffect(() => {
     // Verificar se já mostrou o alerta antes
     const hasShownAlert = localStorage.getItem('firebase-indexes-alert-shown');
     if (!hasShownAlert && !loading) {
@@ -37,6 +37,7 @@ export function Dashboard() {
       localStorage.setItem('firebase-indexes-alert-shown', 'true');
     }
   }, [loading]);
+
   
   if (loading) {
     return (
