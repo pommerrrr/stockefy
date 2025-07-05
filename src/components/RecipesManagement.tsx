@@ -14,9 +14,14 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, ChefHat, Calculator } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { toast } from 'sonner';
+import { Plus, Search, Edit, Trash2, ChefHat, Calculator, Loader2 } from 'lucide-react';
+import { useProducts } from '@/hooks/useFirebaseData';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RecipeIngredient {
+  productId: string;
   itemName: string;
   quantity: number;
   unit: string;
@@ -34,7 +39,7 @@ interface Recipe {
   costPerServing: number;
 }
 
-// Mock data
+// Mock data - will be replaced with Firebase data
 const mockRecipes: Recipe[] = [
   {
     id: 1,
@@ -42,10 +47,10 @@ const mockRecipes: Recipe[] = [
     description: 'Hambúrguer tradicional com carne, queijo e molho especial',
     category: 'Hambúrgueres',
     ingredients: [
-      { itemName: 'Pão Brioche', quantity: 1, unit: 'Unidade', cost: 1.50 },
-      { itemName: 'Carne Angus 180g', quantity: 0.18, unit: 'Kg', cost: 6.30 },
-      { itemName: 'Queijo Cheddar', quantity: 0.03, unit: 'Kg', cost: 0.87 },
-      { itemName: 'Molho Especial', quantity: 0.02, unit: 'Litro', cost: 0.30 }
+      { productId: '1', itemName: 'Pão Brioche', quantity: 1, unit: 'Unidade', cost: 1.50 },
+      { productId: '2', itemName: 'Carne Angus 180g', quantity: 0.18, unit: 'Kg', cost: 6.30 },
+      { productId: '3', itemName: 'Queijo Cheddar', quantity: 0.03, unit: 'Kg', cost: 0.87 },
+      { productId: '4', itemName: 'Molho Especial', quantity: 0.02, unit: 'Litro', cost: 0.30 }
     ],
     totalCost: 8.97,
     servings: 1,
@@ -57,7 +62,7 @@ const mockRecipes: Recipe[] = [
     description: 'Porção média de batata frita crocante',
     category: 'Acompanhamentos',
     ingredients: [
-      { itemName: 'Batata Palito', quantity: 0.15, unit: 'Kg', cost: 2.25 }
+      { productId: '5', itemName: 'Batata Palito', quantity: 0.15, unit: 'Kg', cost: 2.25 }
     ],
     totalCost: 2.25,
     servings: 1,
@@ -65,17 +70,9 @@ const mockRecipes: Recipe[] = [
   }
 ];
 
-const mockItems = [
-  { name: 'Pão Brioche', unit: 'Unidade', cost: 1.50 },
-  { name: 'Carne Angus 180g', unit: 'Kg', cost: 35.00 },
-  { name: 'Queijo Cheddar', unit: 'Kg', cost: 28.90 },
-  { name: 'Molho Especial', unit: 'Litro', cost: 15.00 },
-  { name: 'Batata Palito', unit: 'Kg', cost: 15.00 },
-  { name: 'Alface Americana', unit: 'Unidade', cost: 2.50 },
-  { name: 'Tomate', unit: 'Kg', cost: 8.00 }
-];
-
 export function RecipesManagement() {
+  const { organization } = useAuth();
+  const { products, loading: productsLoading } = useProducts();
   const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -91,9 +88,11 @@ export function RecipesManagement() {
       setRecipes(recipes.map(recipe => 
         recipe.id === editingRecipe.id ? { ...recipeData, id: editingRecipe.id } : recipe
       ));
+      toast.success('Receita atualizada com sucesso!');
     } else {
       const newRecipe = { ...recipeData, id: Date.now() };
       setRecipes([...recipes, newRecipe]);
+      toast.success('Receita criada com sucesso!');
     }
     setIsDialogOpen(false);
     setEditingRecipe(null);
@@ -106,7 +105,21 @@ export function RecipesManagement() {
 
   const handleDeleteRecipe = (id: number) => {
     setRecipes(recipes.filter(recipe => recipe.id !== id));
+    toast.success('Receita excluída com sucesso!');
   };
+
+  if (!organization) {
+    return (
+      <div className="page-container">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando dados da organização...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -132,6 +145,8 @@ export function RecipesManagement() {
           </DialogTrigger>
           <RecipeFormDialog 
             recipe={editingRecipe} 
+            products={products}
+            productsLoading={productsLoading}
             onSave={handleSaveRecipe}
             onCancel={() => {
               setIsDialogOpen(false);
@@ -247,11 +262,13 @@ export function RecipesManagement() {
 
 interface RecipeFormDialogProps {
   recipe: Recipe | null;
+  products: any[];
+  productsLoading: boolean;
   onSave: (recipe: Omit<Recipe, 'id'>) => void;
   onCancel: () => void;
 }
 
-function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
+function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel }: RecipeFormDialogProps) {
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
     description: recipe?.description || '',
@@ -261,6 +278,7 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
   });
 
   const [newIngredient, setNewIngredient] = useState({
+    productId: '',
     itemName: '',
     quantity: 0,
     unit: '',
@@ -269,24 +287,26 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
 
   const calculateTotalCost = () => {
     return formData.ingredients.reduce((total, ingredient) => 
-      total + (ingredient.quantity * ingredient.cost), 0
+      total + ingredient.cost, 0
     );
   };
 
   const handleAddIngredient = () => {
-    if (newIngredient.itemName && newIngredient.quantity > 0) {
-      const item = mockItems.find(i => i.name === newIngredient.itemName);
-      if (item) {
-        const ingredientCost = (newIngredient.quantity * item.cost);
+    if (newIngredient.productId && newIngredient.quantity > 0) {
+      const product = products.find(p => p.id === newIngredient.productId);
+      if (product) {
+        const ingredientCost = (newIngredient.quantity * product.costPrice);
         setFormData({
           ...formData,
           ingredients: [...formData.ingredients, {
-            ...newIngredient,
-            unit: item.unit,
+            productId: newIngredient.productId,
+            itemName: product.name,
+            quantity: newIngredient.quantity,
+            unit: product.unit,
             cost: ingredientCost
           }]
         });
-        setNewIngredient({ itemName: '', quantity: 0, unit: '', cost: 0 });
+        setNewIngredient({ productId: '', itemName: '', quantity: 0, unit: '', cost: 0 });
       }
     }
   };
@@ -300,6 +320,12 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!formData.name || !formData.category || formData.ingredients.length === 0) {
+      toast.error('Preencha todos os campos obrigatórios e adicione pelo menos um ingrediente');
+      return;
+    }
+    
     const totalCost = calculateTotalCost();
     const costPerServing = totalCost / formData.servings;
     
@@ -324,7 +350,7 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Nome da Receita</Label>
+            <Label htmlFor="name">Nome da Receita *</Label>
             <Input
               id="name"
               value={formData.name}
@@ -334,11 +360,12 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="category">Categoria</Label>
+            <Label htmlFor="category">Categoria *</Label>
             <Input
               id="category"
               value={formData.category}
               onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+              placeholder="Ex: Hambúrgueres, Acompanhamentos"
               required
             />
           </div>
@@ -355,7 +382,7 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="servings">Número de Porções</Label>
+          <Label htmlFor="servings">Número de Porções *</Label>
           <Input
             id="servings"
             type="number"
@@ -372,37 +399,54 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
           
           {/* Adicionar ingrediente */}
           <div className="grid grid-cols-4 gap-2 p-4 border rounded-lg bg-gray-50">
-            <Select value={newIngredient.itemName} onValueChange={(value) => setNewIngredient({ ...newIngredient, itemName: value })}>
-              <SelectTrigger>
-                <SelectValue placeholder="Ingrediente" />
-              </SelectTrigger>
-              <SelectContent>
-                {mockItems.map((item) => (
-                  <SelectItem key={item.name} value={item.name}>
-                    {item.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            
-            <Input
-              type="number"
-              placeholder="Quantidade"
-              min="0"
-              step="0.01"
-              value={newIngredient.quantity}
-              onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) || 0 })}
-            />
-            
-            <div className="flex items-center px-3 border rounded-md bg-white">
-              <span className="text-sm text-muted-foreground">
-                {mockItems.find(i => i.name === newIngredient.itemName)?.unit || 'Un'}
-              </span>
-            </div>
-            
-            <Button type="button" onClick={handleAddIngredient}>
-              <Plus className="w-4 h-4" />
-            </Button>
+            {productsLoading ? (
+              <div className="col-span-4 flex items-center gap-2">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span className="text-sm">Carregando produtos...</span>
+              </div>
+            ) : (
+              <>
+                <Select value={newIngredient.productId} onValueChange={(value) => {
+                  const product = products.find(p => p.id === value);
+                  setNewIngredient({ 
+                    ...newIngredient, 
+                    productId: value,
+                    itemName: product?.name || '',
+                    unit: product?.unit || ''
+                  });
+                }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Ingrediente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {products.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                
+                <Input
+                  type="number"
+                  placeholder="Quantidade"
+                  min="0"
+                  step="0.01"
+                  value={newIngredient.quantity}
+                  onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) || 0 })}
+                />
+                
+                <div className="flex items-center px-3 border rounded-md bg-white">
+                  <span className="text-sm text-muted-foreground">
+                    {newIngredient.unit || 'Un'}
+                  </span>
+                </div>
+                
+                <Button type="button" onClick={handleAddIngredient} disabled={!newIngredient.productId || newIngredient.quantity <= 0}>
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </>
+            )}
           </div>
 
           {/* Lista de ingredientes */}
@@ -434,20 +478,23 @@ function RecipeFormDialog({ recipe, onSave, onCancel }: RecipeFormDialogProps) {
 
           {/* Resumo de custos */}
           {formData.ingredients.length > 0 && (
-            <div className="p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <div className="flex justify-between items-center">
-                <span className="font-medium">Custo Total:</span>
-                <span className="text-lg font-bold text-purple-600">
-                  R$ {calculateTotalCost().toFixed(2)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center mt-1">
-                <span className="text-sm text-muted-foreground">Custo por Porção:</span>
-                <span className="font-medium text-purple-600">
-                  R$ {(calculateTotalCost() / formData.servings).toFixed(2)}
-                </span>
-              </div>
-            </div>
+            <Alert>
+              <Calculator className="w-4 h-4" />
+              <AlertDescription>
+                <div className="flex justify-between items-center">
+                  <span className="font-medium">Custo Total:</span>
+                  <span className="text-lg font-bold text-purple-600">
+                    R$ {calculateTotalCost().toFixed(2)}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center mt-1">
+                  <span className="text-sm text-muted-foreground">Custo por Porção:</span>
+                  <span className="font-medium text-purple-600">
+                    R$ {(calculateTotalCost() / formData.servings).toFixed(2)}
+                  </span>
+                </div>
+              </AlertDescription>
+            </Alert>
           )}
         </div>
 

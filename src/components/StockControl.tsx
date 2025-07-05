@@ -3,6 +3,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Package, 
   Search, 
@@ -10,146 +12,23 @@ import {
   TrendingDown, 
   Minus,
   Activity,
-  AlertTriangle
+  AlertTriangle,
+  Loader2,
+  RefreshCw
 } from 'lucide-react';
-
-interface StockItem {
-  id: number;
-  name: string;
-  category: string;
-  currentStock: number;
-  unit: string;
-  minStock: number;
-  lastCost: number;
-  supplier: string;
-  lastUpdate: string;
-}
-
-interface StockMovement {
-  id: number;
-  itemName: string;
-  type: 'entrada' | 'saida' | 'perda';
-  quantity: number;
-  unit: string;
-  reason: string;
-  date: string;
-  time: string;
-  cost?: number;
-}
-
-// Mock data
-const mockStockItems: StockItem[] = [
-  {
-    id: 1,
-    name: 'Pão Brioche',
-    category: 'Pães',
-    currentStock: 85,
-    unit: 'Unidade',
-    minStock: 20,
-    lastCost: 1.50,
-    supplier: 'Padaria Central',
-    lastUpdate: '2025-06-05'
-  },
-  {
-    id: 2,
-    name: 'Carne Angus 180g',
-    category: 'Carnes',
-    currentStock: 12,
-    unit: 'Kg',
-    minStock: 10,
-    lastCost: 35.00,
-    supplier: 'Frigorífico Premium',
-    lastUpdate: '2025-06-05'
-  },
-  {
-    id: 3,
-    name: 'Queijo Cheddar',
-    category: 'Laticínios',
-    currentStock: 3,
-    unit: 'Kg',
-    minStock: 5,
-    lastCost: 28.90,
-    supplier: 'Laticínios Brasil',
-    lastUpdate: '2025-06-04'
-  },
-  {
-    id: 4,
-    name: 'Molho Especial',
-    category: 'Molhos',
-    currentStock: 2,
-    unit: 'Litro',
-    minStock: 10,
-    lastCost: 15.00,
-    supplier: 'Molhos & Cia',
-    lastUpdate: '2025-06-04'
-  },
-  {
-    id: 5,
-    name: 'Batata Palito',
-    category: 'Vegetais',
-    currentStock: 5,
-    unit: 'Kg',
-    minStock: 20,
-    lastCost: 15.00,
-    supplier: 'Vegetais Fresh',
-    lastUpdate: '2025-06-03'
-  },
-  {
-    id: 6,
-    name: 'Alface Americana',
-    category: 'Vegetais',
-    currentStock: 25,
-    unit: 'Unidade',
-    minStock: 15,
-    lastCost: 2.50,
-    supplier: 'Vegetais Fresh',
-    lastUpdate: '2025-06-05'
-  }
-];
-
-const mockMovements: StockMovement[] = [
-  {
-    id: 1,
-    itemName: 'Pão Brioche',
-    type: 'entrada',
-    quantity: 100,
-    unit: 'Unidade',
-    reason: 'Compra - NF 12345',
-    date: '2025-06-05',
-    time: '09:30',
-    cost: 150.00
-  },
-  {
-    id: 2,
-    itemName: 'Carne Angus 180g',
-    type: 'saida',
-    quantity: 3,
-    unit: 'Kg',
-    reason: 'Produção - 15 hambúrgueres',
-    date: '2025-06-05',
-    time: '12:15'
-  },
-  {
-    id: 3,
-    itemName: 'Molho Especial',
-    type: 'perda',
-    quantity: 2,
-    unit: 'Litro',
-    reason: 'Vencimento',
-    date: '2025-06-04',
-    time: '18:00'
-  }
-];
+import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
+import { useAuth } from '@/contexts/AuthContext';
 
 export function StockControl() {
-  const [stockItems] = useState<StockItem[]>(mockStockItems);
-  const [movements] = useState<StockMovement[]>(mockMovements);
+  const { organization } = useAuth();
+  const { products, loading: productsLoading, refreshProducts } = useProducts();
+  const { movements, loading: movementsLoading, refreshMovements } = useStockMovements();
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
-  const categories = Array.from(new Set(stockItems.map(item => item.category)));
+  const categories = Array.from(new Set(products.map(item => item.category)));
 
-  const filteredItems = stockItems.filter(item => {
+  const filteredItems = products.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === 'all' || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
@@ -163,11 +42,11 @@ export function StockControl() {
 
   const getMovementIcon = (type: string) => {
     switch (type) {
-      case 'entrada':
+      case 'entry':
         return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'saida':
+      case 'exit':
         return <TrendingDown className="w-4 h-4 text-blue-600" />;
-      case 'perda':
+      case 'loss':
         return <Minus className="w-4 h-4 text-red-600" />;
       default:
         return <Activity className="w-4 h-4" />;
@@ -176,26 +55,50 @@ export function StockControl() {
 
   const getMovementBadge = (type: string) => {
     switch (type) {
-      case 'entrada':
+      case 'entry':
         return <Badge className="bg-green-100 text-green-800 border-green-300">Entrada</Badge>;
-      case 'saida':
+      case 'exit':
         return <Badge className="bg-blue-100 text-blue-800 border-blue-300">Saída</Badge>;
-      case 'perda':
+      case 'loss':
         return <Badge className="bg-red-100 text-red-800 border-red-300">Perda</Badge>;
       default:
         return <Badge>Movimento</Badge>;
     }
   };
 
+  const handleRefresh = async () => {
+    await Promise.all([refreshProducts(), refreshMovements()]);
+  };
+
+  if (!organization) {
+    return (
+      <div className="page-container">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando dados da organização...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-8 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
-          Controle de Estoque
-        </h1>
-        <p className="text-muted-foreground">
-          Visualize e acompanhe todos os produtos em estoque
-        </p>
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-green-600 to-green-500 bg-clip-text text-transparent">
+            Controle de Estoque
+          </h1>
+          <p className="text-muted-foreground">
+            Visualize e acompanhe todos os produtos em estoque
+          </p>
+        </div>
+        
+        <Button onClick={handleRefresh} variant="outline" disabled={productsLoading || movementsLoading}>
+          <RefreshCw className={`w-4 h-4 mr-2 ${(productsLoading || movementsLoading) ? 'animate-spin' : ''}`} />
+          Atualizar
+        </Button>
       </div>
 
       <Tabs defaultValue="inventory" className="space-y-6">
@@ -205,6 +108,16 @@ export function StockControl() {
         </TabsList>
 
         <TabsContent value="inventory" className="space-y-6">
+          {/* Alertas de estoque baixo */}
+          {products.filter(p => p.currentStock <= p.minimumStock).length > 0 && (
+            <Alert className="border-orange-200 bg-orange-50">
+              <AlertTriangle className="h-5 w-5 text-orange-600" />
+              <AlertDescription className="text-orange-800">
+                <strong>Atenção!</strong> Você tem {products.filter(p => p.currentStock <= p.minimumStock).length} produtos com estoque baixo.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Filtros */}
           <Card className="border-0 shadow-lg">
             <CardContent className="p-4">
@@ -247,68 +160,85 @@ export function StockControl() {
             </CardContent>
           </Card>
 
-          {/* Grid de produtos */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {filteredItems.map((item) => {
-              const stockStatus = getStockStatus(item.currentStock, item.minStock);
-              return (
-                <Card key={item.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+          {/* Loading state */}
+          {productsLoading ? (
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {[...Array(8)].map((_, i) => (
+                <Card key={i} className="border-0 shadow-lg">
                   <CardContent className="p-4">
-                    <div className="space-y-3">
-                      {/* Header */}
-                      <div className="flex items-start justify-between">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
-                          <Package className="w-6 h-6 text-blue-600" />
-                        </div>
-                        <div className={`w-3 h-3 rounded-full ${stockStatus.color}`} />
-                      </div>
-                      
-                      {/* Nome e categoria */}
-                      <div>
-                        <h3 className="font-semibold text-sm leading-tight">{item.name}</h3>
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {item.category}
-                        </Badge>
-                      </div>
-                      
-                      {/* Estoque */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Estoque</span>
-                          <Badge variant={stockStatus.status === 'good' ? 'default' : 'destructive'} className="text-xs">
-                            {stockStatus.label}
-                          </Badge>
-                        </div>
-                        <div className="text-lg font-bold">
-                          {item.currentStock} <span className="text-sm font-normal text-muted-foreground">{item.unit}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div 
-                            className={`h-2 rounded-full ${stockStatus.color}`}
-                            style={{ 
-                              width: `${Math.min(100, (item.currentStock / (item.minStock * 2)) * 100)}%` 
-                            }}
-                          />
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Mínimo: {item.minStock} {item.unit}
-                        </div>
-                      </div>
-                      
-                      {/* Info adicional */}
-                      <div className="text-xs text-muted-foreground space-y-1">
-                        <div>💰 R$ {item.lastCost.toFixed(2)}</div>
-                        <div>🏪 {item.supplier}</div>
-                        <div>📅 {item.lastUpdate}</div>
-                      </div>
+                    <div className="space-y-3 animate-pulse">
+                      <div className="w-12 h-12 bg-gray-200 rounded-lg" />
+                      <div className="h-4 bg-gray-200 rounded w-3/4" />
+                      <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      <div className="h-2 bg-gray-200 rounded w-full" />
                     </div>
                   </CardContent>
                 </Card>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          ) : (
+            /* Grid de produtos */
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              {filteredItems.map((item) => {
+                const stockStatus = getStockStatus(item.currentStock, item.minimumStock);
+                return (
+                  <Card key={item.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        {/* Header */}
+                        <div className="flex items-start justify-between">
+                          <div className="w-12 h-12 bg-gradient-to-br from-blue-100 to-blue-200 rounded-lg flex items-center justify-center">
+                            <Package className="w-6 h-6 text-blue-600" />
+                          </div>
+                          <div className={`w-3 h-3 rounded-full ${stockStatus.color}`} />
+                        </div>
+                        
+                        {/* Nome e categoria */}
+                        <div>
+                          <h3 className="font-semibold text-sm leading-tight">{item.name}</h3>
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {item.category}
+                          </Badge>
+                        </div>
+                        
+                        {/* Estoque */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Estoque</span>
+                            <Badge variant={stockStatus.status === 'good' ? 'default' : 'destructive'} className="text-xs">
+                              {stockStatus.label}
+                            </Badge>
+                          </div>
+                          <div className="text-lg font-bold">
+                            {item.currentStock} <span className="text-sm font-normal text-muted-foreground">{item.unit}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className={`h-2 rounded-full ${stockStatus.color}`}
+                              style={{ 
+                                width: `${Math.min(100, (item.currentStock / (item.minimumStock * 2)) * 100)}%` 
+                              }}
+                            />
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            Mínimo: {item.minimumStock} {item.unit}
+                          </div>
+                        </div>
+                        
+                        {/* Info adicional */}
+                        <div className="text-xs text-muted-foreground space-y-1">
+                          <div>💰 R$ {item.costPrice.toFixed(2)}</div>
+                          <div>📅 {item.updatedAt.toLocaleDateString('pt-BR')}</div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
 
-          {filteredItems.length === 0 && (
+          {!productsLoading && filteredItems.length === 0 && (
             <Card className="border-0 shadow-lg">
               <CardContent className="p-12 text-center">
                 <Package className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -333,38 +263,63 @@ export function StockControl() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {movements.map((movement) => (
-                  <div key={movement.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
-                        {getMovementIcon(movement.type)}
+              {movementsLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <div key={i} className="flex items-center gap-4 p-4 border rounded-xl animate-pulse">
+                      <div className="w-10 h-10 bg-gray-200 rounded-lg" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 bg-gray-200 rounded w-1/3" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
                       </div>
-                      <div>
-                        <h4 className="font-semibold">{movement.itemName}</h4>
-                        <p className="text-sm text-muted-foreground">{movement.reason}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {movement.date} às {movement.time}
-                        </p>
-                      </div>
+                      <div className="w-16 h-6 bg-gray-200 rounded" />
                     </div>
-                    
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {movement.quantity} {movement.unit}
-                        </div>
-                        {movement.cost && (
-                          <div className="text-sm text-muted-foreground">
-                            R$ {movement.cost.toFixed(2)}
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {movements.map((movement) => {
+                    const product = products.find(p => p.id === movement.productId);
+                    return (
+                      <div key={movement.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center">
+                            {getMovementIcon(movement.type)}
                           </div>
-                        )}
+                          <div>
+                            <h4 className="font-semibold">{product?.name || 'Produto não encontrado'}</h4>
+                            <p className="text-sm text-muted-foreground">{movement.reason}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {movement.createdAt.toLocaleDateString('pt-BR')} às {movement.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <div className="font-semibold">
+                              {movement.quantity} {product?.unit || 'un'}
+                            </div>
+                            {movement.totalCost && (
+                              <div className="text-sm text-muted-foreground">
+                                R$ {movement.totalCost.toFixed(2)}
+                              </div>
+                            )}
+                          </div>
+                          {getMovementBadge(movement.type)}
+                        </div>
                       </div>
-                      {getMovementBadge(movement.type)}
+                    );
+                  })}
+                  
+                  {movements.length === 0 && (
+                    <div className="text-center py-8">
+                      <Activity className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">Nenhuma movimentação registrada</p>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
