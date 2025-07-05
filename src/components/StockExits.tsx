@@ -377,25 +377,13 @@ function ExitFormDialog({ products, productsLoading, recipes, recipesLoading, ex
                       <SelectValue placeholder="Selecione o produto" />
                     </SelectTrigger>
                     <SelectContent>
-                  {recipesLoading ? (
-                    <div className="flex items-center gap-2 p-2">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">Carregando receitas...</span>
-                    </div>
-                  ) : (
-                    <Select value={formData.recipeName} onValueChange={(value) => setFormData({ ...formData, recipeName: value })}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione a receita" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {recipes.map((recipe) => (
-                          <SelectItem key={recipe.id} value={recipe.name}>
-                            {recipe.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          {product.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 )}
               </div>
               
@@ -433,18 +421,25 @@ function ExitFormDialog({ products, productsLoading, recipes, recipesLoading, ex
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="recipe">Receita *</Label>
-                <Select value={formData.recipeName} onValueChange={(value) => setFormData({ ...formData, recipeName: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione a receita" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockRecipes.map((recipe) => (
-                      <SelectItem key={recipe.id} value={recipe.name}>
-                        {recipe.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {recipesLoading ? (
+                  <div className="flex items-center gap-2 p-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Carregando receitas...</span>
+                  </div>
+                ) : (
+                  <Select value={formData.recipeName} onValueChange={(value) => setFormData({ ...formData, recipeName: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a receita" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {recipes.map((recipe) => (
+                        <SelectItem key={recipe.id} value={recipe.name}>
+                          {recipe.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               
               <div className="space-y-2">
