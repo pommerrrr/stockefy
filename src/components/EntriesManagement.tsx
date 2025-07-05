@@ -545,18 +545,14 @@ function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmit
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-                  {products.length > 0 ? products.map((product) => (
+            Cancelar
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Registrando...
-                  )) : (
-                    <div className="p-2 text-center text-sm text-muted-foreground">
-                      Nenhum produto cadastrado
-                    </div>
-                  )}
+              </>
             ) : (
               'Registrar Entrada'
             )}
