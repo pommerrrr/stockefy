@@ -17,7 +17,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import { Plus, Upload, FileText, Calendar, TrendingUp, Package, Loader2 } from 'lucide-react';
 import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
 
