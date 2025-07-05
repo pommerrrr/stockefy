@@ -464,8 +464,6 @@ function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeCh
                   <SelectContent>
                     {mockRecipes.map((recipe) => (
                       <SelectItem key={recipe.id} value={recipe.name}>
-                       {recipe.name}
-                     </SelectItem>
                         {recipe.name}
                       </SelectItem>
                     ))}
