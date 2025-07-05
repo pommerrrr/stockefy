@@ -4,7 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '../App';
 import { useDashboardStats } from '@/hooks/useFirebaseData';
-import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
+import { FirebaseIndexAlert } from './FirebaseIndexAlert';
 import { 
   Loader2,
   Package, 
@@ -25,14 +25,17 @@ import {
 export function Dashboard() {
   const { navigateToEntries, navigateToRecipes, navigateToReports } = useAppContext();
   const { loading, ...stats } = useDashboardStats();
-  const { organization } = useAuth();
+  const [showIndexAlert, setShowIndexAlert] = React.useState(false);
   
-  // Verificar índices quando o componente carrega
+  // Mostrar alerta de índices se necessário
   React.useEffect(() => {
-    if (organization?.id) {
-      checkFirebaseIndexes(organization.id);
+    // Verificar se já mostrou o alerta antes
+    const hasShownAlert = localStorage.getItem('firebase-indexes-alert-shown');
+    if (!hasShownAlert && !loading) {
+      setShowIndexAlert(true);
+      localStorage.setItem('firebase-indexes-alert-shown', 'true');
     }
-  }, [organization?.id]);
+  }, [loading]);
   
   if (loading) {
     return (
@@ -48,6 +51,12 @@ export function Dashboard() {
   }
 
   return (
+    <>
+      <FirebaseIndexAlert 
+        show={showIndexAlert} 
+        onClose={() => setShowIndexAlert(false)} 
+      />
+      
     <div className="page-container">
       {/* Header */}
       <div className="page-header">
@@ -290,5 +299,6 @@ export function Dashboard() {
         </div>
       </div>
     </div>
+    </>
   );
 }
