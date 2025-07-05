@@ -33,29 +33,31 @@ const categories = [
 export function EntriesManagement() {
   const { user, organization } = useAuth();
   const { products, loading: productsLoading, addProduct, refreshProducts } = useProducts();
-  const { addMovement } = useStockMovements();
+  const { addMovement, movements, refreshMovements } = useStockMovements();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock entries for display (will be replaced with real data)
-  const [entries] = useState([
-    {
-      id: 1,
-      productName: 'Pão Brioche',
-      quantity: 100,
-      unit: 'Unidade',
-      cost: 150.00,
-      supplier: 'Padaria Central',
-      date: '2025-06-05',
-      invoice: 'NF-12345',
-      notes: 'Entrega matinal'
-    }
-  ]);
+  // Filter movements to show only entries
+  const entries = movements
+    .filter(m => m.type === 'entry')
+    .map(movement => {
+      const product = products.find(p => p.id === movement.productId);
+      return {
+        id: movement.id,
+        productName: product?.name || 'Produto não encontrado',
+        quantity: movement.quantity,
+        unit: product?.unit || 'Unidade',
+        cost: movement.totalCost || 0,
+        supplier: movement.reason?.replace('Entrada - ', '') || 'Fornecedor não informado',
+        date: movement.createdAt.toLocaleDateString('pt-BR'),
+        notes: movement.reason
+      };
+    });
 
   const filteredEntries = entries.filter(entry =>
     entry.productName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    entry.supplier.toLowerCase().includes(searchTerm.toLowerCase())
+    (entry.supplier && entry.supplier.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   const handleSaveEntry = async (entryData: any) => {
@@ -113,7 +115,8 @@ export function EntriesManagement() {
       if (movementResult.success) {
         toast.success('Entrada registrada com sucesso!');
         setIsDialogOpen(false);
-        refreshProducts();
+        // Refresh both products and movements to update the UI
+        await Promise.all([refreshProducts(), refreshMovements()]);
       } else {
         toast.error('Erro ao registrar entrada: ' + movementResult.error);
       }
@@ -222,51 +225,72 @@ export function EntriesManagement() {
         </Card>
 
         {/* Lista de entradas */}
-        <div className="grid gap-4">
-          {filteredEntries.map((entry) => (
-            <Card key={entry.id} className="hover:shadow-md transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
-                      <TrendingUp className="w-7 h-7 text-primary" />
-                    </div>
-                    <div className="space-y-1">
-                      <h3 className="text-lg font-semibold">{entry.productName}</h3>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                        <span>📦 {entry.quantity} {entry.unit}</span>
-                        <span>🏪 {entry.supplier}</span>
-                        <span>📅 {entry.date}</span>
+        {productsLoading || movements.length === 0 ? (
+          <div className="space-y-4">
+            {[...Array(3)].map((_, i) => (
+              <Card key={i} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between animate-pulse">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-gray-200 rounded-xl"></div>
+                      <div className="space-y-2">
+                        <div className="h-5 bg-gray-200 rounded w-40"></div>
+                        <div className="h-4 bg-gray-200 rounded w-60"></div>
                       </div>
-                      {entry.invoice && (
-                        <Badge variant="outline" className="text-xs">
-                          {entry.invoice}
-                        </Badge>
-                      )}
-                      {entry.notes && (
-                        <p className="text-sm text-muted-foreground italic">
-                          {entry.notes}
-                        </p>
-                      )}
+                    </div>
+                    <div className="w-24 h-10 bg-gray-200 rounded"></div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4">
+            {filteredEntries.map((entry) => (
+              <Card key={entry.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                        <TrendingUp className="w-7 h-7 text-primary" />
+                      </div>
+                      <div className="space-y-1">
+                        <h3 className="text-lg font-semibold">{entry.productName}</h3>
+                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                          <span>📦 {entry.quantity} {entry.unit}</span>
+                          <span>🏪 {entry.supplier}</span>
+                          <span>📅 {entry.date}</span>
+                        </div>
+                        {entry.invoice && (
+                          <Badge variant="outline" className="text-xs">
+                            {entry.invoice}
+                          </Badge>
+                        )}
+                        {entry.notes && (
+                          <p className="text-sm text-muted-foreground italic">
+                            {entry.notes}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="text-2xl font-bold text-primary">
+                        R$ {entry.cost.toFixed(2)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        Custo total
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        R$ {(entry.cost / entry.quantity).toFixed(2)} por {entry.unit.toLowerCase()}
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="text-right">
-                    <div className="text-2xl font-bold text-primary">
-                      R$ {entry.cost.toFixed(2)}
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      Custo total
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                      R$ {(entry.cost / entry.quantity).toFixed(2)} por {entry.unit.toLowerCase()}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
 
         {filteredEntries.length === 0 && (
           <Card>
@@ -311,7 +335,7 @@ function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmit
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (formData.isNewProduct) {
       if (!formData.productName || formData.quantity <= 0 || formData.unitCost <= 0) {
         toast.error('Preencha todos os campos obrigatórios');
@@ -328,23 +352,14 @@ function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmit
   };
 
   const handleProductSelect = (value: string) => {
-    if (value === '_new_product_') {
-      setFormData({ 
-        ...formData, 
-        isNewProduct: true, 
-        productId: '', 
-        productName: '' 
-      });
-    } else {
-      const selectedProduct = products.find(p => p.id === value);
-      setFormData({ 
-        ...formData, 
-        isNewProduct: false, 
-        productId: value,
-        productName: selectedProduct?.name || '',
-        unit: selectedProduct?.unit || 'Unidade'
-      });
-    }
+    const selectedProduct = products.find(p => p.id === value);
+    setFormData({ 
+      ...formData, 
+      isNewProduct: false, 
+      productId: value,
+      productName: selectedProduct?.name || '',
+      unit: selectedProduct?.unit || 'Unidade'
+    });
   };
 
   return (
@@ -530,14 +545,18 @@ function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmit
 
         <div className="flex justify-end gap-2">
           <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
-            Cancelar
+                  {products.length > 0 ? products.map((product) => (
           </Button>
           <Button type="submit" disabled={isSubmitting}>
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                 Registrando...
-              </>
+                  )) : (
+                    <div className="p-2 text-center text-sm text-muted-foreground">
+                      Nenhum produto cadastrado
+                    </div>
+                  )}
             ) : (
               'Registrar Entrada'
             )}
