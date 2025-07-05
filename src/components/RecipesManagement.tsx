@@ -54,7 +54,7 @@ interface Recipe {
   updatedAt: Date;
 }
 
-// Categorias predefinidas para receitas
+// Categorias predefinidas para receitas - AGORA SERÃO USADAS PARA FILTROS E ORGANIZAÇÃO
 const recipeCategories = [
   'Hambúrgueres',
   'Acompanhamentos', 
@@ -75,6 +75,7 @@ export function RecipesManagement() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
 
@@ -111,10 +112,13 @@ export function RecipesManagement() {
     loadRecipes();
   }, [organization?.id]);
 
-  const filteredRecipes = recipes.filter(recipe =>
-    recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    recipe.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // Filtrar receitas por busca e categoria
+  const filteredRecipes = recipes.filter(recipe => {
+    const matchesSearch = recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         recipe.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === 'all' || recipe.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
   const handleSaveRecipe = async (recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!organization?.id || !user?.id) {
@@ -229,17 +233,53 @@ export function RecipesManagement() {
         </Dialog>
       </div>
 
-      {/* Barra de pesquisa */}
+      {/* Barra de pesquisa e filtros */}
       <Card className="border-0 shadow-lg">
         <CardContent className="p-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar receitas por nome ou categoria..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
+          <div className="flex gap-4 items-center">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar receitas por nome ou descrição..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {/* Filtro por categoria */}
+            <div className="flex gap-2">
+              <Button
+                variant={categoryFilter === 'all' ? 'default' : 'outline'}
+                onClick={() => setCategoryFilter('all')}
+                size="sm"
+              >
+                Todas
+              </Button>
+              {recipeCategories.slice(0, 4).map((category) => (
+                <Button
+                  key={category}
+                  variant={categoryFilter === category ? 'default' : 'outline'}
+                  onClick={() => setCategoryFilter(category)}
+                  size="sm"
+                >
+                  {category}
+                </Button>
+              ))}
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                <SelectTrigger className="w-32">
+                  <SelectValue placeholder="Mais..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas</SelectItem>
+                  {recipeCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -342,7 +382,7 @@ export function RecipesManagement() {
             <ChefHat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhuma receita encontrada</h3>
             <p className="text-muted-foreground">
-              {searchTerm ? 'Tente ajustar sua busca' : 'Comece criando sua primeira ficha técnica'}
+              {searchTerm || categoryFilter !== 'all' ? 'Tente ajustar sua busca ou filtros' : 'Comece criando sua primeira ficha técnica'}
             </p>
           </CardContent>
         </Card>
@@ -493,11 +533,11 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
           />
         </div>
 
-        {/* Ingredientes */}
+        {/* Ingredientes - LAYOUT CORRIGIDO */}
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Ingredientes</h3>
           
-          {/* Adicionar ingrediente - Layout corrigido */}
+          {/* Adicionar ingrediente - Layout melhorado */}
           <div className="p-4 border rounded-lg bg-gray-50 space-y-4">
             {productsLoading ? (
               <div className="flex items-center gap-2">
@@ -506,7 +546,7 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
               </div>
             ) : (
               <>
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label>Ingrediente *</Label>
                     <Select value={newIngredient.productId} onValueChange={(value) => {
@@ -532,17 +572,6 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
                   </div>
                   
                   <div className="space-y-2">
-                    <Label>Unidade</Label>
-                    <div className="flex items-center px-3 py-2 border rounded-md bg-white">
-                      <span className="text-sm text-muted-foreground">
-                        {newIngredient.unit || 'Selecione um produto'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex gap-4 items-end">
-                  <div className="flex-1 space-y-2">
                     <Label>Quantidade *</Label>
                     <Input
                       type="number"
@@ -554,6 +583,17 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
                     />
                   </div>
                   
+                  <div className="space-y-2">
+                    <Label>Unidade</Label>
+                    <div className="flex items-center px-3 py-2 border rounded-md bg-white">
+                      <span className="text-sm text-muted-foreground">
+                        {newIngredient.unit || 'Selecione um produto'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end">
                   <Button 
                     type="button" 
                     onClick={handleAddIngredient} 
@@ -567,34 +607,35 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
             )}
           </div>
 
-          {/* Lista de ingredientes - Layout melhorado */}
+          {/* Lista de ingredientes - Layout melhorado para evitar sobreposição */}
           <div className="space-y-2">
             {formData.ingredients.map((ingredient, index) => (
               <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-white">
-                <div className="flex-1 grid grid-cols-3 gap-4 items-center">
-                  <div>
-                    <span className="font-medium text-sm">{ingredient.itemName}</span>
+                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
+                  <div className="min-w-0">
+                    <span className="font-medium text-sm block truncate">{ingredient.itemName}</span>
                   </div>
                   <div className="text-center">
                     <span className="text-sm text-muted-foreground">
                       {ingredient.quantity} {ingredient.unit}
                     </span>
                   </div>
-                  <div className="text-right">
+                  <div className="text-center">
                     <span className="text-sm font-medium text-green-600">
                       R$ {ingredient.cost.toFixed(2)}
                     </span>
                   </div>
+                  <div className="flex justify-end">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => handleRemoveIngredient(index)}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm"
-                  onClick={() => handleRemoveIngredient(index)}
-                  className="ml-4"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
               </div>
             ))}
           </div>

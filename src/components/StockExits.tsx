@@ -30,33 +30,44 @@ import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
 
 // Mock recipes data - will be replaced with real data later
-const mockRecipes = [
-  {
-    id: 1,
-    name: 'Hambúrguer Clássico',
-    ingredients: [
-      { productId: 'pao-brioche', itemName: 'Pão Brioche', quantity: 1, unit: 'Unidade' },
-      { productId: 'carne-angus', itemName: 'Carne Angus 180g', quantity: 0.18, unit: 'Kg' },
-      { productId: 'queijo-cheddar', itemName: 'Queijo Cheddar', quantity: 0.03, unit: 'Kg' },
-      { productId: 'molho-especial', itemName: 'Molho Especial', quantity: 0.02, unit: 'Litro' }
-    ]
-  },
-  {
-    id: 2,
-    name: 'Batata Frita Média',
-    ingredients: [
-      { productId: 'batata-palito', itemName: 'Batata Palito', quantity: 0.15, unit: 'Kg' }
-    ]
+// Função para buscar receitas do Firebase
+const getRecipesFromFirebase = async (organizationId: string) => {
+  try {
+    const q = query(
+      collection(db, 'recipes'),
+      where('organizationId', '==', organizationId)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Erro ao carregar receitas:', error);
+    return [];
   }
-];
+};
 
 export function StockExits() {
   const { user, organization } = useAuth();
   const { products, loading: productsLoading, refreshProducts } = useProducts();
   const { addMovement, movements, refreshMovements } = useStockMovements();
+  const [recipes, setRecipes] = useState<any[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exitMode, setExitMode] = useState<'individual' | 'recipe'>('individual');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Carregar receitas do Firebase
+  useEffect(() => {
+    const loadRecipes = async () => {
+      if (organization?.id) {
+        const recipesData = await getRecipesFromFirebase(organization.id);
+        setRecipes(recipesData);
+      }
+    };
+    loadRecipes();
+  }, [organization?.id]);
 
   const handleSaveExit = async (exitData: any) => {
     if (!organization?.id || !user?.id) {
@@ -100,7 +111,7 @@ export function StockExits() {
         }
       } else {
         // Saída por receita - processar múltiplos ingredientes
-        const recipe = mockRecipes.find(r => r.name === exitData.recipeName);
+        const recipe = recipes.find(r => r.name === exitData.recipeName);
         if (!recipe) {
           toast.error('Receita não encontrada');
           setIsSubmitting(false);
@@ -205,6 +216,7 @@ export function StockExits() {
           <ExitFormDialog 
             products={products}
             productsLoading={productsLoading}
+            recipes={recipes}
             exitMode={exitMode}
             onModeChange={setExitMode}
             onSave={handleSaveExit}
@@ -297,6 +309,7 @@ export function StockExits() {
 interface ExitFormDialogProps {
   products: any[];
   productsLoading: boolean;
+  recipes: any[];
   exitMode: 'individual' | 'recipe';
   onModeChange: (mode: 'individual' | 'recipe') => void;
   onSave: (exit: any) => void;
@@ -304,7 +317,7 @@ interface ExitFormDialogProps {
   isSubmitting: boolean;
 }
 
-function ExitFormDialog({ products, productsLoading, exitMode, onModeChange, onSave, onCancel, isSubmitting }: ExitFormDialogProps) {
+function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeChange, onSave, onCancel, isSubmitting }: ExitFormDialogProps) {
   const [formData, setFormData] = useState({
     productId: '',
     recipeName: '',
@@ -313,7 +326,7 @@ function ExitFormDialog({ products, productsLoading, exitMode, onModeChange, onS
     exitType: 'exit' as 'exit' | 'loss'
   });
 
-  const selectedRecipe = mockRecipes.find(r => r.name === formData.recipeName);
+  const selectedRecipe = recipes.find(r => r.name === formData.recipeName);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -372,8 +385,8 @@ function ExitFormDialog({ products, productsLoading, exitMode, onModeChange, onS
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="exit">Uso Normal/Produção</SelectItem>
-                  <SelectItem value="loss">Perda/Descarte</SelectItem>
+                  {recipes.map((recipe) => (
+                    <SelectItem key={recipe.id} value={recipe.name}>
                 </SelectContent>
               </Select>
             </div>
