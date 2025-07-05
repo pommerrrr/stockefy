@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useAppContext } from '../App';
 import { useDashboardStats } from '@/hooks/useFirebaseData';
 import { 
+  Loader2,
   Package, 
   TrendingUp, 
   TrendingDown, 
@@ -23,7 +24,20 @@ import {
 
 export function Dashboard() {
   const { navigateToEntries, navigateToRecipes, navigateToReports } = useAppContext();
-  const stats = useDashboardStats();
+  const { loading, ...stats } = useDashboardStats();
+  
+  if (loading) {
+    return (
+      <div className="page-container">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando estatísticas...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="page-container">
@@ -179,23 +193,27 @@ export function Dashboard() {
                           {movement.type === 'entry' ? (
                             <TrendingUp className="w-5 h-5 text-green-600" />
                           ) : movement.type === 'exit' ? (
+                      {movement && (
+                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                          movement.type === 'entry' ? 'bg-green-100' :
+                          movement.type === 'exit' ? 'bg-blue-100' : 'bg-red-100'
+                        }`}>
+                          {movement.type === 'entry' ? (
+                            <TrendingUp className="w-5 h-5 text-green-600" />
+                          ) : movement.type === 'exit' ? (
                             <TrendingDown className="w-5 h-5 text-blue-600" />
                           ) : (
                             <AlertTriangle className="w-5 h-5 text-red-600" />
                           )}
                         </div>
-                        <div>
-                          <p className="font-medium">Produto ID: {movement.productId}</p>
+                      )}
+                      <Badge 
+                        <p className="font-medium">Produto ID: {movement?.productId || 'N/A'}</p>
+                        {movement?.createdAt && (
                           <p className="text-sm text-muted-foreground">
                             {movement.createdAt.toLocaleDateString('pt-BR')} às {movement.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                           </p>
-                        </div>
-                      </div>
-                      <Badge 
-                        variant={movement.type === 'entry' ? 'default' : 
-                                 movement.type === 'exit' ? 'secondary' : 'destructive'}
-                      >
-                        {movement.quantity}
+                        )}
                       </Badge>
                     </div>
                   ))
