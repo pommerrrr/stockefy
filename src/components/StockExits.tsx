@@ -61,6 +61,7 @@ export function StockExits() {
   const handleSaveExit = async (exitData: any) => {
     if (!organization?.id || !user?.id) {
       toast.error('Erro de autenticação');
+      setIsSubmitting(false);
       return;
     }
 
@@ -69,6 +70,16 @@ export function StockExits() {
     try {
       if (exitData.type === 'individual') {
         // Saída individual
+        console.log('Registrando saída individual:', exitData);
+        
+        // Verificar se o produto existe
+        const product = products.find(p => p.id === exitData.productId);
+        if (!product) {
+          toast.error(`Produto não encontrado com ID: ${exitData.productId}`);
+          setIsSubmitting(false);
+          return;
+        }
+        
         const result = await addMovement({
           productId: exitData.productId,
           type: exitData.exitType === 'loss' ? 'loss' : 'exit',
@@ -81,14 +92,18 @@ export function StockExits() {
         if (result.success) {
           toast.success('Saída registrada com sucesso!');
           setIsDialogOpen(false);
+          // Atualizar produtos e movimentações
+          await Promise.all([refreshProducts(), refreshMovements()]);
         } else {
-          toast.error('Erro ao registrar saída: ' + result.error);
+          console.error('Erro ao registrar saída:', result.error);
+          toast.error(`Erro ao registrar saída: ${result.error}`);
         }
       } else {
         // Saída por receita - processar múltiplos ingredientes
         const recipe = mockRecipes.find(r => r.name === exitData.recipeName);
         if (!recipe) {
           toast.error('Receita não encontrada');
+          setIsSubmitting(false);
           return;
         }
 
@@ -96,7 +111,7 @@ export function StockExits() {
         const promises = recipe.ingredients.map(ingredient => {
           const product = products.find(p => p.name === ingredient.itemName);
           if (!product) {
-            console.warn(`Produto não encontrado: ${ingredient.itemName}`);
+            console.warn(`Produto não encontrado para receita: ${ingredient.itemName}`);
             return Promise.resolve({ success: true });
           }
 
@@ -116,13 +131,15 @@ export function StockExits() {
         if (failures.length === 0) {
           toast.success(`Saída por receita registrada! ${recipe.ingredients.length} ingredientes processados.`);
           setIsDialogOpen(false);
+          // Atualizar produtos e movimentações
+          await Promise.all([refreshProducts(), refreshMovements()]);
         } else {
           toast.error(`Erro ao processar ${failures.length} ingredientes da receita`);
         }
       }
     } catch (error) {
+      console.error('Erro inesperado ao registrar saída:', error);
       toast.error('Erro inesperado ao registrar saída');
-      console.error('Exit error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -301,9 +318,11 @@ function ExitFormDialog({ products, productsLoading, exitMode, onModeChange, onS
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Submitting exit form data:', formData);
+    
     if (exitMode === 'individual') {
       if (!formData.productId || formData.quantity <= 0 || !formData.reason) {
-        toast.error('Preencha todos os campos obrigatórios');
+        toast.error('Preencha todos os campos obrigatórios para saída individual');
         return;
       }
       
@@ -316,7 +335,7 @@ function ExitFormDialog({ products, productsLoading, exitMode, onModeChange, onS
       });
     } else {
       if (!formData.recipeName || formData.quantity <= 0) {
-        toast.error('Preencha todos os campos obrigatórios');
+        toast.error('Preencha todos os campos obrigatórios para saída por receita');
         return;
       }
       

@@ -323,6 +323,8 @@ export const createProduct = async (productData: Omit<Product, 'id' | 'createdAt
 
 export const getOrganizationProducts = async (organizationId: string) => {
   try {
+    console.log('Fetching products for organization:', organizationId);
+    
     const q = query(
       collection(db, 'products'),
       where('organizationId', '==', organizationId),
@@ -330,15 +332,20 @@ export const getOrganizationProducts = async (organizationId: string) => {
     );
     
     const querySnapshot = await getDocs(q);
+    console.log('Products query result:', querySnapshot.size, 'documents');
+    
     const products = querySnapshot.docs.map(doc => 
       convertTimestamp({ id: doc.id, ...doc.data() }) as Product
     );
+    
+    console.log('Processed products:', products.length);
     
     return {
       success: true,
       products
     };
   } catch (error: any) {
+    console.error('Error fetching products:', error);
     return {
       success: false,
       error: error.message
@@ -440,6 +447,8 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
 
 export const getStockMovements = async (organizationId: string, limitCount = 50) => {
   try {
+    console.log('Fetching movements for organization:', organizationId);
+    
     const q = query(
       collection(db, 'stockMovements'),
       where('organizationId', '==', organizationId),
@@ -448,15 +457,20 @@ export const getStockMovements = async (organizationId: string, limitCount = 50)
     );
     
     const querySnapshot = await getDocs(q);
+    console.log('Movements query result:', querySnapshot.size, 'documents');
+    
     const movements = querySnapshot.docs.map(doc => 
       convertTimestamp({ id: doc.id, ...doc.data() }) as StockMovement
     );
+    
+    console.log('Processed movements:', movements.length);
     
     return {
       success: true,
       movements
     };
   } catch (error: any) {
+    console.error('Error fetching movements:', error);
     return {
       success: false,
       error: error.message
@@ -467,6 +481,31 @@ export const getStockMovements = async (organizationId: string, limitCount = 50)
 // Auth state observer
 export const onAuthStateChange = (callback: (user: FirebaseUser | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+// Helper para debug
+export const debugFirestore = async () => {
+  try {
+    console.log('--- DEBUG FIRESTORE ---');
+    
+    // Listar todas as coleções
+    const collections = ['users', 'organizations', 'products', 'stockMovements'];
+    
+    for (const collectionName of collections) {
+      const snapshot = await getDocs(collection(db, collectionName));
+      console.log(`Collection ${collectionName}:`, snapshot.size, 'documents');
+      
+      // Mostrar alguns documentos de exemplo
+      const docs = snapshot.docs.slice(0, 3).map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`Sample ${collectionName}:`, docs);
+    }
+    
+    console.log('--- END DEBUG ---');
+    return true;
+  } catch (error) {
+    console.error('Debug error:', error);
+    return false;
+  }
 };
 
 // Validation functions

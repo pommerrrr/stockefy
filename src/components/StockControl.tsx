@@ -23,6 +23,7 @@ export function StockControl() {
   const { organization } = useAuth();
   const { products, loading: productsLoading, refreshProducts } = useProducts();
   const { movements, loading: movementsLoading, refreshMovements } = useStockMovements();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
 
@@ -69,6 +70,11 @@ export function StockControl() {
   const handleRefresh = async () => {
     await Promise.all([refreshProducts(), refreshMovements()]);
   };
+  
+  // Carregar dados ao montar o componente
+  React.useEffect(() => {
+    handleRefresh();
+  }, []);
 
   if (!organization) {
     return (
@@ -280,6 +286,11 @@ export function StockControl() {
                 <div className="space-y-4">
                   {movements.map((movement) => {
                     const product = products.find(p => p.id === movement.productId);
+                    
+                    if (!product) {
+                      console.warn(`Produto não encontrado para movimento: ${movement.productId}`);
+                    }
+                    
                     return (
                       <div key={movement.id} className="flex items-center justify-between p-4 border rounded-xl hover:bg-gray-50 transition-colors">
                         <div className="flex items-center gap-4">
@@ -289,9 +300,11 @@ export function StockControl() {
                           <div>
                             <h4 className="font-semibold">{product?.name || 'Produto não encontrado'}</h4>
                             <p className="text-sm text-muted-foreground">{movement.reason}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {movement.createdAt.toLocaleDateString('pt-BR')} às {movement.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                            </p>
+                            {movement.createdAt && (
+                              <p className="text-xs text-muted-foreground">
+                                {movement.createdAt.toLocaleDateString('pt-BR')} às {movement.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            )}
                           </div>
                         </div>
                         

@@ -19,15 +19,20 @@ export const useProducts = () => {
   const loadProducts = async () => {
     if (!organization?.id) return;
     
+    console.log('Loading products for organization:', organization.id);
     setLoading(true);
     try {
       const result = await getOrganizationProducts(organization.id);
+      console.log('Products loaded:', result);
+      
       if (result.success && result.products) {
         setProducts(result.products);
       } else {
+        console.error('Failed to load products:', result.error);
         setError(result.error || 'Erro ao carregar produtos');
       }
     } catch (err) {
+      console.error('Exception loading products:', err);
       setError('Erro inesperado ao carregar produtos');
     } finally {
       setLoading(false);
@@ -84,15 +89,20 @@ export const useStockMovements = () => {
   const loadMovements = async () => {
     if (!organization?.id) return;
     
+    console.log('Loading movements for organization:', organization.id);
     setLoading(true);
     try {
       const result = await getStockMovements(organization.id);
+      console.log('Movements loaded:', result);
+      
       if (result.success && result.movements) {
         setMovements(result.movements);
       } else {
+        console.error('Failed to load movements:', result.error);
         setError(result.error || 'Erro ao carregar movimentações');
       }
     } catch (err) {
+      console.error('Exception loading movements:', err);
       setError('Erro inesperado ao carregar movimentações');
     } finally {
       setLoading(false);
@@ -102,6 +112,8 @@ export const useStockMovements = () => {
   const addMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
     if (!organization?.id || !user?.id) return { success: false, error: 'Dados de autenticação não encontrados' };
 
+    console.log('Adding movement with data:', movementData);
+    
     // Validação para garantir que productId está definido
     if (!movementData.productId) {
       console.error('Erro: productId não definido', movementData);
@@ -117,8 +129,24 @@ export const useStockMovements = () => {
       
       if (result.success && result.movement) {
         setMovements(prev => [result.movement!, ...prev]);
+        
+        // Atualizar o produto na lista local
+        const updatedProduct = products.find(p => p.id === movementData.productId);
+        if (updatedProduct) {
+          const newStock = movementData.type === 'entry' 
+            ? updatedProduct.currentStock + movementData.quantity
+            : Math.max(0, updatedProduct.currentStock - movementData.quantity);
+            
+          setProducts(prev => prev.map(p => 
+            p.id === movementData.productId 
+              ? { ...p, currentStock: newStock } 
+              : p
+          ));
+        }
+        
         return { success: true };
       } else {
+        console.error('Failed to create movement:', result.error);
         return { success: false, error: result.error };
       }
     } catch (err) {
@@ -142,23 +170,35 @@ export const useStockMovements = () => {
 
 // Hook para estatísticas do dashboard
 export const useDashboardStats = () => {
-  const { products } = useProducts();
-  const { movements } = useStockMovements();
+  const { products, loading: productsLoading } = useProducts();
+  const { movements, loading: movementsLoading } = useStockMovements();
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    lowStockItems: 0,
+    totalValue: 0,
+    recentMovements: [] as any[],
+    lowStockAlerts: [] as any[]
+  });
+  
+  // Atualizar estatísticas quando os dados mudarem
+  React.useEffect(() => {
+    if (!productsLoading && !movementsLoading) {
+      setStats({
+        totalItems: products.length,
+        lowStockItems: products.filter(p => p.currentStock <= p.minimumStock).length,
+        totalValue: products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0),
+        recentMovements: movements.slice(0, 5),
+        lowStockAlerts: products
+          .filter(p => p.currentStock <= p.minimumStock)
+          .map(p => ({
+            item: p.name,
+            current: p.currentStock,
+            minimum: p.minimumStock,
+            unit: p.unit
+          }))
+      });
+    }
+  }, [products, movements, productsLoading, movementsLoading]);
 
-  const stats = {
-    totalItems: products.length,
-    lowStockItems: products.filter(p => p.currentStock <= p.minimumStock).length,
-    totalValue: products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0),
-    recentMovements: movements.slice(0, 5),
-    lowStockAlerts: products
-      .filter(p => p.currentStock <= p.minimumStock)
-      .map(p => ({
-        item: p.name,
-        current: p.currentStock,
-        minimum: p.minimumStock,
-        unit: p.unit
-      }))
-  };
-
-  return stats;
+  return { ...stats, loading: productsLoading || movementsLoading };
 };

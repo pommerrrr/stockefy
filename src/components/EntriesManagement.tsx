@@ -63,6 +63,7 @@ export function EntriesManagement() {
   const handleSaveEntry = async (entryData: any) => {
     if (!organization?.id || !user?.id) {
       toast.error('Erro de autenticação');
+      setIsSubmitting(false);
       return;
     }
 
@@ -83,12 +84,14 @@ export function EntriesManagement() {
 
         if (!productResult.success) {
           toast.error('Erro ao criar produto: ' + productResult.error);
+          setIsSubmitting(false);
           return;
         }
 
         // Certifique-se de que o ID do produto está definido
         if (!productResult.product?.id) {
           toast.error('Erro: ID do produto não foi gerado corretamente');
+          setIsSubmitting(false);
           return;
         }
         
@@ -98,8 +101,11 @@ export function EntriesManagement() {
       // Criar movimentação de entrada
       if (!entryData.productId) {
         toast.error('Erro: ID do produto não definido');
+        setIsSubmitting(false);
         return;
       }
+      
+      console.log('Registrando entrada para produto ID:', entryData.productId);
       
       const movementResult = await addMovement({
         productId: entryData.productId,
@@ -118,11 +124,12 @@ export function EntriesManagement() {
         // Refresh both products and movements to update the UI
         await Promise.all([refreshProducts(), refreshMovements()]);
       } else {
-        toast.error('Erro ao registrar entrada: ' + movementResult.error);
+        console.error('Erro ao registrar entrada:', movementResult.error);
+        toast.error(`Erro ao registrar entrada: ${movementResult.error}`);
       }
     } catch (error) {
+      console.error('Erro inesperado ao registrar entrada:', error);
       toast.error('Erro inesperado ao registrar entrada');
-      console.error('Entry error:', error);
     } finally {
       setIsSubmitting(false);
     }
@@ -318,7 +325,7 @@ interface EntryFormDialogProps {
 
 function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmitting }: EntryFormDialogProps) {
   const [formData, setFormData] = useState({
-    productId: '',
+    productId: '', // ID do produto existente
     productName: '',
     quantity: 0,
     unit: 'Unidade',
@@ -335,6 +342,8 @@ function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmit
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    
+    console.log('Submitting form data:', formData);
 
     if (formData.isNewProduct) {
       if (!formData.productName || formData.quantity <= 0 || formData.unitCost <= 0) {
@@ -353,12 +362,16 @@ function EntryFormDialog({ products, productsLoading, onSave, onCancel, isSubmit
 
   const handleProductSelect = (value: string) => {
     const selectedProduct = products.find(p => p.id === value);
+    console.log('Selected product:', selectedProduct);
+    
     setFormData({ 
       ...formData, 
       isNewProduct: false, 
       productId: value,
       productName: selectedProduct?.name || '',
-      unit: selectedProduct?.unit || 'Unidade'
+      unit: selectedProduct?.unit || 'Unidade',
+      // Pré-preencher o custo unitário com o custo do produto
+      unitCost: selectedProduct?.costPrice || 0
     });
   };
 
