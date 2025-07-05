@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { useAppContext } from '../App';
 import { useDashboardStats } from '@/hooks/useFirebaseData';
+import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
 import { 
   Loader2,
   Package, 
@@ -24,6 +25,14 @@ import {
 export function Dashboard() {
   const { navigateToEntries, navigateToRecipes, navigateToReports } = useAppContext();
   const { loading, ...stats } = useDashboardStats();
+  const { organization } = useAuth();
+  
+  // Verificar índices quando o componente carrega
+  React.useEffect(() => {
+    if (organization?.id) {
+      checkFirebaseIndexes(organization.id);
+    }
+  }, [organization?.id]);
   
   if (loading) {
     return (

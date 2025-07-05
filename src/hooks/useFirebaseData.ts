@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
 import { 
   getOrganizationProducts, 
   getStockMovements,
@@ -18,6 +19,13 @@ export const useProducts = () => {
 
   const loadProducts = async () => {
     if (!organization?.id) return;
+    
+    // Verificar índices antes de fazer consultas
+    const indexesOK = await checkFirebaseIndexes(organization.id);
+    if (!indexesOK) {
+      setLoading(false);
+      return; // Para aqui se índices estão faltando
+    }
     
     console.log('Loading products for organization:', organization.id);
     setLoading(true);
@@ -88,6 +96,13 @@ export const useStockMovements = () => {
 
   const loadMovements = async () => {
     if (!organization?.id) return;
+    
+    // Verificar índices antes de fazer consultas
+    const indexesOK = await checkFirebaseIndexes(organization.id);
+    if (!indexesOK) {
+      setLoading(false);
+      return; // Para aqui se índices estão faltando
+    }
     
     console.log('Loading movements for organization:', organization.id);
     setLoading(true);
