@@ -19,7 +19,6 @@ import {
   FileText,
   Zap,
   ArrowRight,
-  Loader2
 } from 'lucide-react';
 
 export function Dashboard() {
