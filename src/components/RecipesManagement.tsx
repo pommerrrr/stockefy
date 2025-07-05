@@ -610,27 +610,31 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
           {/* Lista de ingredientes - Layout melhorado para evitar sobreposição */}
           <div className="space-y-2">
             {formData.ingredients.map((ingredient, index) => (
-              <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-white">
-                <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-4 items-center">
-                  <div className="min-w-0">
-                    <span className="font-medium text-sm block truncate">{ingredient.itemName}</span>
+              <div key={index} className="p-4 border rounded-lg bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="min-w-0 md:col-span-2 lg:col-span-1">
+                    <div className="text-xs text-muted-foreground mb-1">Produto</div>
+                    <span className="font-medium text-sm block break-words">{ingredient.itemName}</span>
                   </div>
-                  <div className="text-center">
+                  <div className="min-w-0">
+                    <div className="text-xs text-muted-foreground mb-1">Quantidade</div>
                     <span className="text-sm text-muted-foreground">
                       {ingredient.quantity} {ingredient.unit}
                     </span>
                   </div>
-                  <div className="text-center">
+                  <div className="min-w-0">
+                    <div className="text-xs text-muted-foreground mb-1">Custo</div>
                     <span className="text-sm font-medium text-green-600">
                       R$ {ingredient.cost.toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end items-start">
                     <Button 
                       type="button" 
                       variant="outline" 
                       size="sm"
                       onClick={() => handleRemoveIngredient(index)}
+                      className="mt-4 md:mt-0"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>
