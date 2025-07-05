@@ -355,6 +355,15 @@ export const updateProductStock = async (productId: string, newStock: number) =>
 // Stock Movement functions
 export const createStockMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
   try {
+    // Validação adicional para garantir que productId está definido
+    if (!movementData.productId) {
+      console.error('Erro: productId não definido em createStockMovement', movementData);
+      return {
+        success: false,
+        error: 'ID do produto não definido'
+      };
+    }
+    
     const batch = writeBatch(db);
     
     // Create movement
@@ -389,6 +398,7 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
       movement: { id: movementRef.id, ...movement }
     };
   } catch (error: any) {
+    console.error('Erro em createStockMovement:', error);
     return {
       success: false,
       error: error.message

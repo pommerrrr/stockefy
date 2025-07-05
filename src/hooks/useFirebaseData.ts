@@ -95,6 +95,12 @@ export const useStockMovements = () => {
   const addMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
     if (!organization?.id || !user?.id) return { success: false, error: 'Dados de autenticação não encontrados' };
 
+    // Validação para garantir que productId está definido
+    if (!movementData.productId) {
+      console.error('Erro: productId não definido', movementData);
+      return { success: false, error: 'ID do produto não definido' };
+    }
+
     try {
       const result = await createStockMovement({
         ...movementData,
@@ -109,6 +115,7 @@ export const useStockMovements = () => {
         return { success: false, error: result.error };
       }
     } catch (err) {
+      console.error('Erro ao criar movimentação:', err);
       return { success: false, error: 'Erro ao criar movimentação' };
     }
   };

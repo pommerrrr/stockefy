@@ -84,10 +84,21 @@ export function EntriesManagement() {
           return;
         }
 
-        entryData.productId = productResult.product?.id;
+        // Certifique-se de que o ID do produto está definido
+        if (!productResult.product?.id) {
+          toast.error('Erro: ID do produto não foi gerado corretamente');
+          return;
+        }
+        
+        entryData.productId = productResult.product.id;
       }
 
       // Criar movimentação de entrada
+      if (!entryData.productId) {
+        toast.error('Erro: ID do produto não definido');
+        return;
+      }
+      
       const movementResult = await addMovement({
         productId: entryData.productId,
         type: 'entry',
