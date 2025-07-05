@@ -121,117 +121,59 @@
     @apply bg-background text-foreground font-sans min-h-screen;
   }
   
-  /* Layout improvements */
-  .app-container {
-    @apply min-h-screen flex flex-col;
+  /* Layout container */
+  .layout-container {
+    @apply min-h-screen flex;
   }
   
-  .main-content {
-    @apply flex-1 flex;
+  .main-container {
+    @apply flex-1 flex flex-col min-h-screen;
   }
   
-  .content-area {
-    @apply flex-1 flex flex-col;
-  }
-  
-  .page-content {
+  .content-wrapper {
     @apply flex-1 overflow-auto;
   }
   
-  /* Header improvements */
+  /* Header styles */
   .app-header {
-    @apply bg-white border-b border-border shadow-sm;
+    @apply bg-background border-b border-border px-6 py-4;
   }
   
-  /* Orange gradient system */
-  .gradient-primary {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+  /* Page layout */
+  .page-container {
+    @apply p-6 max-w-7xl mx-auto w-full;
   }
   
-  .gradient-secondary {
-    background: linear-gradient(135deg, #fb923c 0%, #fd9745 100%);
+  .page-header {
+    @apply mb-6;
   }
   
-  .gradient-accent {
-    background: linear-gradient(135deg, #fed7aa 0%, #fff7ed 100%);
-  }
-  
-  /* Button improvements */
-  .btn-primary {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    @apply text-white border-0 font-medium;
-    transition: all 0.2s ease;
-  }
-  
-  .btn-primary:hover {
-    background: linear-gradient(135deg, #dc2f02 0%, #ea580c 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(234, 88, 12, 0.4);
-  }
-  
-  .btn-secondary {
-    background: linear-gradient(135deg, #fb923c 0%, #fd9745 100%);
-    @apply text-white border-0 font-medium;
-  }
-  
-  .btn-secondary:hover {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 8px rgba(251, 146, 60, 0.3);
-  }
-  
-  /* Card improvements */
-  .card-clean {
-    @apply bg-card border border-border rounded-lg shadow-sm;
-  }
-  
-  .card-gradient {
-    background: linear-gradient(135deg, #fff7ed 0%, #ffedd5 100%);
-    @apply border border-border rounded-lg shadow-sm;
-  }
-  
-  /* Tab improvements */
-  .tabs-clean {
-    @apply bg-muted rounded-lg p-1;
-  }
-  
-  .tab-clean {
-    @apply px-4 py-2 rounded-md text-sm font-medium transition-all duration-200;
-  }
-  
-  .tab-clean-active {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    @apply text-white;
-  }
-  
-  .tab-clean-inactive {
-    @apply text-muted-foreground hover:text-foreground;
-    background: linear-gradient(135deg, #fed7aa 0%, #fff7ed 100%);
-  }
-  
-  /* Title improvements */
   .page-title {
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
-    @apply text-3xl font-bold tracking-tight;
+    @apply text-2xl font-semibold tracking-tight text-foreground mb-2;
   }
   
-  /* Stats card improvements */
+  .page-description {
+    @apply text-muted-foreground;
+  }
+  
+  /* Card styles */
   .stats-card {
-    @apply rounded-xl p-6 shadow-lg border border-border;
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 20%, #fff7ed 100%);
+    @apply bg-card border border-border rounded-lg p-6 shadow-sm;
+  }
+  
+  .stats-card-header {
+    @apply flex items-center justify-between mb-4;
   }
   
   .stats-card-icon {
-    @apply w-12 h-12 rounded-lg flex items-center justify-center;
-    background: linear-gradient(135deg, #ea580c 0%, #fb923c 100%);
+    @apply w-10 h-10 rounded-lg flex items-center justify-center;
   }
   
-  /* Form improvements */
-  .form-section {
-    @apply space-y-4 p-6 rounded-lg border border-border;
-    background: linear-gradient(135deg, #fff7ed 0%, #fed7aa 20%, #fff7ed 100%);
+  .stats-card-value {
+    @apply text-2xl font-bold text-foreground;
+  }
+  
+  .stats-card-label {
+    @apply text-xs text-muted-foreground mt-1;
   }
 }

@@ -43,19 +43,19 @@ export function Dashboard() {
   const { navigateToEntries, navigateToRecipes, navigateToReports } = useAppContext();
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-4xl font-bold tracking-tight bg-gradient-to-r from-orange-600 to-orange-500 bg-clip-text text-transparent">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Dashboard
           </h1>
-          <p className="text-muted-foreground text-lg">
+          <p className="text-muted-foreground">
             Visão geral inteligente do seu estoque e operações
           </p>
         </div>
         <div className="flex gap-3">
-          <Button onClick={navigateToEntries} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700">
+          <Button onClick={navigateToEntries}>
             <Plus className="w-4 h-4 mr-2" />
             Nova Entrada
           </Button>
@@ -64,27 +64,27 @@ export function Dashboard() {
 
       {/* Cards de estatísticas */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-800">
               Total de Itens
             </CardTitle>
-            <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
               <Package className="h-5 w-5 text-white" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-blue-900">{mockData.totalItems}</div>
-            <p className="text-xs text-blue-600 mt-1 flex items-center">
+            <div className="text-2xl font-bold">{mockData.totalItems}</div>
+            <p className="text-xs text-muted-foreground mt-1 flex items-center">
               <TrendingUp className="w-3 h-3 mr-1" />
               +{mockData.monthlyGrowth}% este mês
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-orange-800">
+            <CardTitle className="text-sm font-medium">
               Estoque Baixo
             </CardTitle>
             <div className="w-10 h-10 bg-orange-500 rounded-lg flex items-center justify-center">
@@ -92,16 +92,16 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-orange-900">{mockData.lowStockItems}</div>
-            <p className="text-xs text-orange-600 mt-1">
+            <div className="text-2xl font-bold">{mockData.lowStockItems}</div>
+            <p className="text-xs text-muted-foreground mt-1">
               Itens precisam reposição
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-green-800">
+            <CardTitle className="text-sm font-medium">
               Valor Total
             </CardTitle>
             <div className="w-10 h-10 bg-green-500 rounded-lg flex items-center justify-center">
@@ -109,16 +109,16 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-900">R$ {mockData.totalValue.toLocaleString('pt-BR')}</div>
-            <p className="text-xs text-green-600 mt-1">
+            <div className="text-2xl font-bold">R$ {mockData.totalValue.toLocaleString('pt-BR')}</div>
+            <p className="text-xs text-muted-foreground mt-1">
               Valor total do estoque
             </p>
           </CardContent>
         </Card>
         
-        <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium text-purple-800">
+            <CardTitle className="text-sm font-medium">
               Fornecedores
             </CardTitle>
             <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center">
@@ -126,8 +126,8 @@ export function Dashboard() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-purple-900">{mockData.suppliersCount}</div>
-            <p className="text-xs text-purple-600 mt-1">
+            <div className="text-2xl font-bold">{mockData.suppliersCount}</div>
+            <p className="text-xs text-muted-foreground mt-1">
               Fornecedores ativos
             </p>
           </CardContent>
@@ -136,15 +136,15 @@ export function Dashboard() {
 
       {/* Alertas de estoque baixo */}
       {mockData.lowStockAlerts.length > 0 && (
-        <Alert className="border-orange-200 bg-gradient-to-r from-orange-50 to-red-50 shadow-lg">
+        <Alert className="border-orange-200 bg-orange-50">
           <AlertTriangle className="h-5 w-5 text-orange-600" />
-          <AlertDescription className="text-orange-800">
+          <AlertDescription>
             <div className="flex items-center justify-between">
               <div>
-                <strong className="text-lg">Atenção!</strong> Você tem {mockData.lowStockAlerts.length} itens com estoque baixo.
+                <strong>Atenção!</strong> Você tem {mockData.lowStockAlerts.length} itens com estoque baixo.
                 <div className="mt-3 space-y-2">
                   {mockData.lowStockAlerts.map((alert, index) => (
-                    <div key={index} className="flex items-center justify-between bg-white/60 p-2 rounded-lg">
+                    <div key={index} className="flex items-center justify-between bg-white p-2 rounded-lg">
                       <span className="font-medium">{alert.item}</span>
                       <Badge variant="destructive" className="text-xs">
                         {alert.current} {alert.unit} / mín: {alert.minimum}
@@ -153,7 +153,7 @@ export function Dashboard() {
                   ))}
                 </div>
               </div>
-              <Button onClick={navigateToReports} className="ml-4 bg-orange-500 hover:bg-orange-600">
+              <Button onClick={navigateToReports} className="ml-4" variant="outline">
                 Ver Lista de Compras
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
@@ -165,10 +165,10 @@ export function Dashboard() {
       {/* Seção principal */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Atividade recente */}
-        <Card className="lg:col-span-2 border-0 shadow-lg">
+        <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-blue-500" />
+              <Activity className="h-5 w-5" />
               Movimentações Recentes
             </CardTitle>
             <CardDescription>
@@ -178,7 +178,7 @@ export function Dashboard() {
           <CardContent>
             <div className="space-y-4">
               {mockData.recentTransactions.map((transaction) => (
-                <div key={transaction.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors">
+                <div key={transaction.id} className="flex items-center justify-between p-4 bg-muted/50 rounded-lg hover:bg-muted transition-colors">
                   <div className="flex items-center gap-4">
                     <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
                       transaction.type === 'entrada' ? 'bg-green-100' :
@@ -202,7 +202,6 @@ export function Dashboard() {
                   <Badge 
                     variant={transaction.type === 'entrada' ? 'default' : 
                              transaction.type === 'saida' ? 'secondary' : 'destructive'}
-                    className="text-sm font-medium px-3 py-1"
                   >
                     {transaction.quantity}
                   </Badge>
@@ -213,10 +212,10 @@ export function Dashboard() {
         </Card>
 
         {/* Ações rápidas */}
-        <Card className="border-0 shadow-lg">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Zap className="h-5 w-5 text-yellow-500" />
+              <Zap className="h-5 w-5" />
               Ações Rápidas
             </CardTitle>
             <CardDescription>
@@ -226,10 +225,10 @@ export function Dashboard() {
           <CardContent className="space-y-3">
             <Button 
               onClick={navigateToEntries}
-              className="w-full justify-start h-auto p-4 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-left"
+              className="w-full justify-start h-auto p-4"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-primary/20 rounded-lg flex items-center justify-center">
                   <Plus className="w-5 h-5" />
                 </div>
                 <div>
@@ -241,10 +240,11 @@ export function Dashboard() {
             
             <Button 
               onClick={navigateToRecipes}
-              className="w-full justify-start h-auto p-4 bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-left"
+              className="w-full justify-start h-auto p-4"
+              variant="outline"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                   <ChefHat className="w-5 h-5" />
                 </div>
                 <div>
@@ -256,10 +256,11 @@ export function Dashboard() {
             
             <Button 
               onClick={navigateToReports}
-              className="w-full justify-start h-auto p-4 bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-left"
+              className="w-full justify-start h-auto p-4"
+              variant="outline"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+                <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                   <FileText className="w-5 h-5" />
                 </div>
                 <div>

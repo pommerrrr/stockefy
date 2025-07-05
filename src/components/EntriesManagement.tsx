@@ -104,38 +104,41 @@ export function EntriesManagement() {
   };
 
   return (
-    <div className="p-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="page-title">
+    <div className="page-container">
+      <div className="page-header">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="page-title">
             Gestão de Entradas
-          </h1>
-          <p className="text-muted-foreground">
+            </h1>
+            <p className="page-description">
             Registre entradas de mercadorias manualmente ou por XML
-          </p>
-        </div>
+            </p>
+          </div>
         
-        <div className="flex gap-3">
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="btn-primary">
+          <div className="flex gap-3">
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button>
                 <Plus className="w-4 h-4 mr-2" />
                 Nova Entrada
-              </Button>
-            </DialogTrigger>
-            <EntryFormDialog 
-              onSave={handleSaveEntry}
-              onCancel={() => setIsDialogOpen(false)}
-            />
-          </Dialog>
+                </Button>
+              </DialogTrigger>
+              <EntryFormDialog 
+                onSave={handleSaveEntry}
+                onCancel={() => setIsDialogOpen(false)}
+              />
+            </Dialog>
+          </div>
         </div>
       </div>
 
       {/* Upload XML */}
-      <Card className="border-0 shadow-lg">
+      <div className="space-y-6">
+        <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Upload className="w-5 h-5 text-green-600" />
+            <Upload className="w-5 h-5" />
             Importação de XML
           </CardTitle>
           <CardDescription>
@@ -162,7 +165,7 @@ export function EntriesManagement() {
       </Card>
 
       {/* Busca */}
-      <Card className="border-0 shadow-lg">
+        <Card>
         <CardContent className="p-4">
           <Input
             placeholder="Buscar entradas por produto ou fornecedor..."
@@ -173,14 +176,14 @@ export function EntriesManagement() {
       </Card>
 
       {/* Lista de entradas */}
-      <div className="grid gap-4">
+        <div className="grid gap-4">
         {filteredEntries.map((entry) => (
-          <Card key={entry.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+          <Card key={entry.id} className="hover:shadow-md transition-shadow">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-orange-100 to-orange-200 rounded-xl flex items-center justify-center">
-                    <TrendingUp className="w-7 h-7 text-orange-600" />
+                  <div className="w-14 h-14 bg-primary/10 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-7 h-7 text-primary" />
                   </div>
                   <div className="space-y-1">
                     <h3 className="text-lg font-semibold">{entry.productName}</h3>
@@ -203,7 +206,7 @@ export function EntriesManagement() {
                 </div>
                 
                 <div className="text-right">
-                  <div className="text-2xl font-bold text-green-600">
+                  <div className="text-2xl font-bold text-primary">
                     R$ {entry.cost.toFixed(2)}
                   </div>
                   <div className="text-sm text-muted-foreground">
@@ -217,10 +220,10 @@ export function EntriesManagement() {
             </CardContent>
           </Card>
         ))}
-      </div>
+        </div>
 
       {filteredEntries.length === 0 && (
-        <Card className="border-0 shadow-lg">
+        <Card>
           <CardContent className="p-12 text-center">
             <TrendingUp className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Nenhuma entrada encontrada</h3>
@@ -230,6 +233,7 @@ export function EntriesManagement() {
           </CardContent>
         </Card>
       )}
+      </div>
     </div>
   );
 }
