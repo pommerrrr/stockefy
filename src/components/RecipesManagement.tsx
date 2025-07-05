@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 import { Plus, Search, Edit, Trash2, ChefHat, Calculator, Loader2 } from 'lucide-react';
 import { useProducts } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
+import { Plus } from 'lucide-react';
 import { 
   collection, 
   addDoc, 
@@ -78,6 +79,10 @@ export function RecipesManagement() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+  const [customCategories, setCustomCategories] = useState<string[]>([]);
+
+  // Combinar categorias predefinidas com personalizadas
+  const allCategories = [...recipeCategories, ...customCategories];
 
   // Carregar receitas do Firebase
   const loadRecipes = async () => {
@@ -229,6 +234,8 @@ export function RecipesManagement() {
               setIsDialogOpen(false);
               setEditingRecipe(null);
             }}
+            customCategories={customCategories}
+            onAddCustomCategory={(category) => setCustomCategories(prev => [...prev, category])}
           />
         </Dialog>
       </div>
@@ -256,7 +263,7 @@ export function RecipesManagement() {
               >
                 Todas
               </Button>
-              {recipeCategories.slice(0, 4).map((category) => (
+              {allCategories.slice(0, 4).map((category) => (
                 <Button
                   key={category}
                   variant={categoryFilter === category ? 'default' : 'outline'}
@@ -272,7 +279,7 @@ export function RecipesManagement() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas</SelectItem>
-                  {recipeCategories.map((category) => (
+                  {allCategories.map((category) => (
                     <SelectItem key={category} value={category}>
                       {category}
                     </SelectItem>
@@ -397,9 +404,19 @@ interface RecipeFormDialogProps {
   productsLoading: boolean;
   onSave: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
+  customCategories: string[];
+  onAddCustomCategory: (category: string) => void;
 }
 
-function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel }: RecipeFormDialogProps) {
+function RecipeFormDialog({ 
+  recipe, 
+  products, 
+  productsLoading, 
+  onSave, 
+  onCancel, 
+  customCategories, 
+  onAddCustomCategory 
+}: RecipeFormDialogProps) {
   const [formData, setFormData] = useState({
     name: recipe?.name || '',
     description: recipe?.description || '',
@@ -416,6 +433,24 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
     cost: 0
   });
 
+  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
+
+  // Combinar todas as categorias disponíveis
+  const allAvailableCategories = [...recipeCategories, ...customCategories];
+
+  const handleAddCustomCategory = () => {
+    if (newCategoryName.trim() && !allAvailableCategories.includes(newCategoryName.trim())) {
+      const categoryName = newCategoryName.trim();
+      onAddCustomCategory(categoryName);
+      setFormData({ ...formData, category: categoryName });
+      setNewCategoryName('');
+      setShowCustomCategoryInput(false);
+      toast.success(`Categoria "${categoryName}" criada com sucesso!`);
+    } else if (allAvailableCategories.includes(newCategoryName.trim())) {
+      toast.error('Esta categoria já existe!');
+    }
+  };
   const calculateTotalCost = () => {
     return formData.ingredients.reduce((total, ingredient) => 
       total + ingredient.cost, 0
@@ -493,21 +528,96 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
           
           <div className="space-y-2">
             <Label htmlFor="category">Categoria *</Label>
-            <Select 
-              value={formData.category} 
-              onValueChange={(value) => setFormData({ ...formData, category: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma categoria" />
-              </SelectTrigger>
-              <SelectContent>
-                {recipeCategories.map((category) => (
-                  <SelectItem key={category} value={category}>
-                    {category}
+            <div className="space-y-2">
+              <Select 
+                value={formData.category} 
+                onValueChange={(value) => {
+                  if (value === 'add-new') {
+                    setShowCustomCategoryInput(true);
+                  } else {
+                    setFormData({ ...formData, category: value });
+                  }
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione uma categoria" />
+                </SelectTrigger>
+                <SelectContent>
+                  {/* Categorias Predefinidas */}
+                  <SelectItem value="" disabled className="font-semibold text-primary">
+                    📋 Categorias Padrão
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                  {recipeCategories.map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
+                  
+                  {/* Categorias Personalizadas */}
+                  {customCategories.length > 0 && (
+                    <>
+                      <SelectItem value="" disabled className="font-semibold text-green-600 mt-2">
+                        ✨ Suas Categorias
+                      </SelectItem>
+                      {customCategories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Opção para adicionar nova */}
+                  <SelectItem value="add-new" className="font-semibold text-blue-600 mt-2">
+                    <div className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Criar Nova Categoria
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+              
+              {/* Input para nova categoria */}
+              {showCustomCategoryInput && (
+                <div className="flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                  <Input
+                    placeholder="Nome da nova categoria"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAddCustomCategory();
+                      }
+                    }}
+                    className="flex-1"
+                  />
+                  <Button 
+                    type="button"
+                    onClick={handleAddCustomCategory}
+                    size="sm"
+                    disabled={!newCategoryName.trim()}
+                  >
+                    <Plus className="w-4 h-4" />
+                  </Button>
+                  <Button 
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setShowCustomCategoryInput(false);
+                      setNewCategoryName('');
+                    }}
+                    size="sm"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )}
+              
+              {/* Dica sobre categorias */}
+              <div className="text-xs text-muted-foreground">
+                💡 <strong>Dica:</strong> Categorias ajudam a organizar receitas e gerar relatórios por tipo de produto
+              </div>
+            </div>
           </div>
         </div>
 
