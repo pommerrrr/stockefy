@@ -192,28 +192,20 @@ export function Dashboard() {
                           {movement.type === 'entry' ? (
                             <TrendingUp className="w-5 h-5 text-green-600" />
                           ) : movement.type === 'exit' ? (
-                      {movement && (
-                        <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                          movement.type === 'entry' ? 'bg-green-100' :
-                          movement.type === 'exit' ? 'bg-blue-100' : 'bg-red-100'
-                        }`}>
-                          {movement.type === 'entry' ? (
-                            <TrendingUp className="w-5 h-5 text-green-600" />
-                          ) : movement.type === 'exit' ? (
                             <TrendingDown className="w-5 h-5 text-blue-600" />
                           ) : (
                             <AlertTriangle className="w-5 h-5 text-red-600" />
                           )}
                         </div>
-                      )}
-                      <Badge 
-                        <p className="font-medium">Produto ID: {movement?.productId || 'N/A'}</p>
-                        {movement?.createdAt && (
-                          <p className="text-sm text-muted-foreground">
-                            {movement.createdAt.toLocaleDateString('pt-BR')} às {movement.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
-                          </p>
-                        )}
-                      </Badge>
+                        <div>
+                          <p className="font-medium">Produto ID: {movement?.productId || 'N/A'}</p>
+                          {movement?.createdAt && (
+                            <p className="text-sm text-muted-foreground">
+                              {movement.createdAt.toLocaleDateString('pt-BR')} às {movement.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   ))
                 ) : (
