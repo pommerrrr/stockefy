@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { Plus, Upload, FileText, Calendar, TrendingUp, Package, Loader2 } from 'lucide-react';
+import { useProducts } from '@/hooks/useFirebaseData';
 import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -36,6 +37,7 @@ export function EntriesManagement() {
   const { addMovement } = useStockMovements();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const { products, addProduct } = useProducts();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Mock entries for display (will be replaced with real data)
@@ -124,6 +126,48 @@ export function EntriesManagement() {
       setIsSubmitting(false);
     }
   };
+  const handleSaveEntryWithProduct = async (entryData: Omit<Entry, 'id'>, isNewProduct: boolean, productData?: any) => {
+    try {
+      let productId = '';
+      
+      if (isNewProduct && productData) {
+        console.log('Creating new product for entry:', productData);
+        
+        const productResult = await addProduct({
+          name: productData.name,
+          category: productData.category || 'Geral',
+          unit: productData.unit,
+          currentStock: 0,
+          minimumStock: productData.minimumStock || 0,
+          costPrice: productData.costPrice || 0,
+          description: productData.description || ''
+        });
+        
+        if (!productResult.success) {
+          toast.error(productResult.error || 'Erro ao criar produto');
+          return;
+        }
+        
+        productId = productResult.product?.id || '';
+        console.log('New product created with ID:', productId);
+      }
+      
+      // Salvar entrada
+      const newEntry = { 
+        ...entryData, 
+        id: Date.now(),
+        productId: productId || entryData.productName // fallback
+      };
+      
+      setEntries([newEntry, ...entries]);
+      setIsDialogOpen(false);
+      toast.success('Entrada registrada com sucesso!');
+      
+    } catch (error) {
+      console.error('Error saving entry:', error);
+      toast.error('Erro ao salvar entrada');
+    }
+  };
 
   const handleXMLUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -170,7 +214,8 @@ export function EntriesManagement() {
               <EntryFormDialog 
                 products={products}
                 productsLoading={productsLoading}
-                onSave={handleSaveEntry}
+                onSave={handleSaveEntryWithProduct}
+                products={products}
                 onCancel={() => setIsDialogOpen(false)}
                 isSubmitting={isSubmitting}
               />

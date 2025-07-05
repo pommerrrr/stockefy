@@ -37,19 +37,26 @@ export const useProducts = () => {
   const addProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
     if (!organization?.id) return { success: false, error: 'Organização não encontrada' };
 
+    console.log('Adding product with organization ID:', organization.id);
+    console.log('Product data:', productData);
+
     try {
       const result = await createProduct({
         ...productData,
         organizationId: organization.id
       });
       
+      console.log('Create product result:', result);
+      
       if (result.success && result.product) {
         setProducts(prev => [...prev, result.product!]);
-        return { success: true };
+        return { success: true, product: result.product };
       } else {
-        return { success: false, error: result.error };
+        console.error('Failed to create product:', result.error);
+        return { success: false, error: result.error || 'Erro ao criar produto' };
       }
     } catch (err) {
+      console.error('Exception creating product:', err);
       return { success: false, error: 'Erro ao criar produto' };
     }
   };
