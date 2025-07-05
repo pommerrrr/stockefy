@@ -28,49 +28,16 @@ import {
 } from 'lucide-react';
 import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
-import { useEffect } from 'react';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-// Mock recipes data - will be replaced with real data later
-// Função para buscar receitas do Firebase
-const getRecipesFromFirebase = async (organizationId: string) => {
-  try {
-    const q = query(
-      collection(db, 'recipes'),
-      where('organizationId', '==', organizationId)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    return querySnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-  } catch (error) {
-    console.error('Erro ao carregar receitas:', error);
-    return [];
-  }
-};
+import { useRecipes } from '@/hooks/useFirebaseData';
 
 export function StockExits() {
   const { user, organization } = useAuth();
   const { products, loading: productsLoading, refreshProducts } = useProducts();
   const { addMovement, movements, refreshMovements } = useStockMovements();
-  const [recipes, setRecipes] = useState<any[]>([]);
+  const { recipes, loading: recipesLoading } = useRecipes();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exitMode, setExitMode] = useState<'individual' | 'recipe'>('individual');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Carregar receitas do Firebase
-  useEffect(() => {
-    const loadRecipes = async () => {
-      if (organization?.id) {
-        const recipesData = await getRecipesFromFirebase(organization.id);
-        setRecipes(recipesData);
-      }
-    };
-    loadRecipes();
-  }, [organization?.id]);
 
   const handleSaveExit = async (exitData: any) => {
     if (!organization?.id || !user?.id) {
@@ -220,6 +187,7 @@ export function StockExits() {
             products={products}
             productsLoading={productsLoading}
             recipes={recipes}
+            recipesLoading={recipesLoading}
             exitMode={exitMode}
             onModeChange={setExitMode}
             onSave={handleSaveExit}
@@ -313,6 +281,7 @@ interface ExitFormDialogProps {
   products: any[];
   productsLoading: boolean;
   recipes: any[];
+  recipesLoading: boolean;
   exitMode: 'individual' | 'recipe';
   onModeChange: (mode: 'individual' | 'recipe') => void;
   onSave: (exit: any) => void;
@@ -320,7 +289,7 @@ interface ExitFormDialogProps {
   isSubmitting: boolean;
 }
 
-function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeChange, onSave, onCancel, isSubmitting }: ExitFormDialogProps) {
+function ExitFormDialog({ products, productsLoading, recipes, recipesLoading, exitMode, onModeChange, onSave, onCancel, isSubmitting }: ExitFormDialogProps) {
   const [formData, setFormData] = useState({
     productId: '',
     recipeName: '',
@@ -408,18 +377,25 @@ function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeCh
                       <SelectValue placeholder="Selecione o produto" />
                     </SelectTrigger>
                     <SelectContent>
-                      {products.map((product) => (
-                        <SelectItem key={product.id} value={product.id}>
-                          <div className="flex items-center justify-between w-full">
-                            <span>{product.name}</span>
-                            <Badge variant="outline" className="ml-2 text-xs">
-                              {product.currentStock} {product.unit}
-                            </Badge>
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {recipesLoading ? (
+                    <div className="flex items-center gap-2 p-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span className="text-sm">Carregando receitas...</span>
+                    </div>
+                  ) : (
+                    <Select value={formData.recipeName} onValueChange={(value) => setFormData({ ...formData, recipeName: value })}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a receita" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {recipes.map((recipe) => (
+                          <SelectItem key={recipe.id} value={recipe.name}>
+                            {recipe.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
                 )}
               </div>
               
@@ -484,7 +460,7 @@ function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeCh
               </div>
             </div>
 
-            {selectedRecipe && (
+            {selectedRecipe && selectedRecipe.ingredients && (
               <Alert>
                 <Calculator className="w-4 h-4" />
                 <AlertDescription>

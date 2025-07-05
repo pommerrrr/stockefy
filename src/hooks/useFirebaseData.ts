@@ -4,11 +4,13 @@ import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
 import { 
   getOrganizationProducts, 
   getStockMovements,
+  getOrganizationRecipes,
+  getOrganizationSuppliers,
   createProduct,
   createStockMovement,
   updateProductStock
 } from '@/lib/firebase';
-import type { Product, StockMovement } from '@/lib/firebase';
+import type { Product, StockMovement, Recipe, Supplier } from '@/lib/firebase';
 
 // Hook para gerenciar produtos
 export const useProducts = () => {
@@ -204,4 +206,88 @@ export const useDashboardStats = () => {
   }, [products, movements, productsLoading, movementsLoading]);
 
   return { ...stats, loading: productsLoading || movementsLoading };
+};
+
+// Hook para gerenciar receitas
+export const useRecipes = () => {
+  const { organization } = useAuth();
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadRecipes = async () => {
+    if (!organization?.id) return;
+    
+    console.log('Loading recipes for organization:', organization.id);
+    setLoading(true);
+    try {
+      const result = await getOrganizationRecipes(organization.id);
+      console.log('Recipes loaded:', result);
+      
+      if (result.success && result.recipes) {
+        setRecipes(result.recipes);
+      } else {
+        console.error('Failed to load recipes:', result.error);
+        setError(result.error || 'Erro ao carregar receitas');
+      }
+    } catch (err) {
+      console.error('Exception loading recipes:', err);
+      setError('Erro inesperado ao carregar receitas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecipes();
+  }, [organization?.id]);
+
+  return {
+    recipes,
+    loading,
+    error,
+    refreshRecipes: loadRecipes
+  };
+};
+
+// Hook para gerenciar fornecedores
+export const useSuppliers = () => {
+  const { organization } = useAuth();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadSuppliers = async () => {
+    if (!organization?.id) return;
+    
+    console.log('Loading suppliers for organization:', organization.id);
+    setLoading(true);
+    try {
+      const result = await getOrganizationSuppliers(organization.id);
+      console.log('Suppliers loaded:', result);
+      
+      if (result.success && result.suppliers) {
+        setSuppliers(result.suppliers);
+      } else {
+        console.error('Failed to load suppliers:', result.error);
+        setError(result.error || 'Erro ao carregar fornecedores');
+      }
+    } catch (err) {
+      console.error('Exception loading suppliers:', err);
+      setError('Erro inesperado ao carregar fornecedores');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSuppliers();
+  }, [organization?.id]);
+
+  return {
+    suppliers,
+    loading,
+    error,
+    refreshSuppliers: loadSuppliers
+  };
 };
