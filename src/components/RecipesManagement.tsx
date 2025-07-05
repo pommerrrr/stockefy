@@ -19,7 +19,6 @@ import { toast } from 'sonner';
 import { Plus, Search, Edit, Trash2, ChefHat, Calculator, Loader2 } from 'lucide-react';
 import { useProducts } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
-import { Plus } from 'lucide-react';
 import { 
   collection, 
   addDoc, 
