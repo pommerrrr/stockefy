@@ -120,28 +120,28 @@ function AppContent() {
   // Authenticated - show main app
   return (
     <AppContext.Provider value={{ navigateToEntries, navigateToRecipes, navigateToReports }}>
-      <div className="app-container">
+      <div className="layout-container">
         <Sidebar currentPage={currentPage} onPageChange={(page: Page) => setCurrentPage(page)} />
         
-        <div className="flex-1 flex flex-col">
+        <div className="main-container">
           {/* Header */}
-          <header className="bg-white border-b border-gray-200 px-6 py-4">
+          <header className="app-header">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-lg font-semibold text-gray-900">
+                <h1 className="text-lg font-semibold text-foreground">
                   {organization?.name || 'Stockely'}
                 </h1>
-                <p className="text-sm text-gray-500 capitalize">
+                <p className="text-sm text-muted-foreground capitalize">
                   {organization?.type || 'Sistema de Gestão'}
                 </p>
               </div>
               
               <div className="flex items-center gap-4">
                 <div className="text-right">
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-sm font-medium text-foreground">
                     {user.name}
                   </p>
-                  <p className="text-xs text-gray-500">
+                  <p className="text-xs text-muted-foreground">
                     {user.email}
                   </p>
                 </div>
@@ -160,7 +160,7 @@ function AppContent() {
           </header>
 
           {/* Main content */}
-          <main className="flex-1 overflow-auto">
+          <main className="content-wrapper">
             {renderCurrentPage()}
           </main>
         </div>
@@ -174,7 +174,9 @@ function AppContent() {
 export default function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <div className="min-h-screen bg-background">
+        <AppContent />
+      </div>
     </AuthProvider>
   );
 }

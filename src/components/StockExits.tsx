@@ -15,6 +15,7 @@ import {
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { toast } from 'sonner';
 import { 
   TrendingDown, 
@@ -22,131 +23,165 @@ import {
   ChefHat, 
   Package,
   AlertTriangle,
-  Calculator
+  Calculator,
+  Loader2
 } from 'lucide-react';
+import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
+import { useAuth } from '@/contexts/AuthContext';
 
-interface StockItem {
-  name: string;
-  currentStock: number;
-  unit: string;
-}
-
-interface Recipe {
-  id: number;
-  name: string;
-  ingredients: { itemName: string; quantity: number; unit: string }[];
-}
-
-interface StockExit {
-  id: number;
-  type: 'individual' | 'recipe';
-  itemName?: string;
-  recipeName?: string;
-  quantity: number;
-  unit: string;
-  reason: string;
-  exitType: 'production' | 'loss' | 'adjustment';
-  date: string;
-  time: string;
-}
-
-// Mock data
-const mockStockItems: StockItem[] = [
-  { name: 'Pão Brioche', currentStock: 85, unit: 'Unidade' },
-  { name: 'Carne Angus 180g', currentStock: 12, unit: 'Kg' },
-  { name: 'Queijo Cheddar', currentStock: 3, unit: 'Kg' },
-  { name: 'Molho Especial', currentStock: 2, unit: 'Litro' },
-  { name: 'Batata Palito', currentStock: 5, unit: 'Kg' },
-  { name: 'Alface Americana', currentStock: 25, unit: 'Unidade' }
-];
-
-const mockRecipes: Recipe[] = [
+// Mock recipes data - will be replaced with real data later
+const mockRecipes = [
   {
     id: 1,
     name: 'Hambúrguer Clássico',
     ingredients: [
-      { itemName: 'Pão Brioche', quantity: 1, unit: 'Unidade' },
-      { itemName: 'Carne Angus 180g', quantity: 0.18, unit: 'Kg' },
-      { itemName: 'Queijo Cheddar', quantity: 0.03, unit: 'Kg' },
-      { itemName: 'Molho Especial', quantity: 0.02, unit: 'Litro' }
+      { productId: 'pao-brioche', itemName: 'Pão Brioche', quantity: 1, unit: 'Unidade' },
+      { productId: 'carne-angus', itemName: 'Carne Angus 180g', quantity: 0.18, unit: 'Kg' },
+      { productId: 'queijo-cheddar', itemName: 'Queijo Cheddar', quantity: 0.03, unit: 'Kg' },
+      { productId: 'molho-especial', itemName: 'Molho Especial', quantity: 0.02, unit: 'Litro' }
     ]
   },
   {
     id: 2,
     name: 'Batata Frita Média',
     ingredients: [
-      { itemName: 'Batata Palito', quantity: 0.15, unit: 'Kg' }
+      { productId: 'batata-palito', itemName: 'Batata Palito', quantity: 0.15, unit: 'Kg' }
     ]
   }
 ];
 
-const mockExits: StockExit[] = [
-  {
-    id: 1,
-    type: 'recipe',
-    recipeName: 'Hambúrguer Clássico',
-    quantity: 25,
-    unit: 'Porções',
-    reason: 'Produção para vendas',
-    exitType: 'production',
-    date: '2025-06-05',
-    time: '12:15'
-  },
-  {
-    id: 2,
-    type: 'individual',
-    itemName: 'Molho Especial',
-    quantity: 2,
-    unit: 'Litro',
-    reason: 'Produto vencido',
-    exitType: 'loss',
-    date: '2025-06-04',
-    time: '18:00'
-  }
-];
-
 export function StockExits() {
-  const [exits, setExits] = useState<StockExit[]>(mockExits);
+  const { user, organization } = useAuth();
+  const { products, loading: productsLoading, refreshProducts } = useProducts();
+  const { addMovement, movements, refreshMovements } = useStockMovements();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exitMode, setExitMode] = useState<'individual' | 'recipe'>('individual');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSaveExit = (exitData: Omit<StockExit, 'id' | 'date' | 'time'>) => {
-    const newExit = {
-      ...exitData,
-      id: Date.now(),
-      date: new Date().toISOString().split('T')[0],
-      time: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
-    };
-    setExits([newExit, ...exits]);
-    setIsDialogOpen(false);
-    toast.success('Saída registrada com sucesso!');
+  const handleSaveExit = async (exitData: any) => {
+    if (!organization?.id || !user?.id) {
+      toast.error('Erro de autenticação');
+      setIsSubmitting(false);
+      return;
+    }
+
+    setIsSubmitting(true);
+    
+    try {
+      if (exitData.type === 'individual') {
+        // Saída individual
+        console.log('Registrando saída individual:', exitData);
+        
+        // Verificar se o produto existe
+        const product = products.find(p => p.id === exitData.productId);
+        if (!product) {
+          toast.error(`Produto não encontrado com ID: ${exitData.productId}`);
+          setIsSubmitting(false);
+          return;
+        }
+        
+        const result = await addMovement({
+          productId: exitData.productId,
+          type: exitData.exitType === 'loss' ? 'loss' : 'exit',
+          quantity: exitData.quantity,
+          reason: exitData.reason,
+          organizationId: organization.id,
+          userId: user.id
+        });
+
+        if (result.success) {
+          toast.success('Saída registrada com sucesso!');
+          setIsDialogOpen(false);
+          // Atualizar produtos e movimentações
+          await Promise.all([refreshProducts(), refreshMovements()]);
+        } else {
+          console.error('Erro ao registrar saída:', result.error);
+          toast.error(`Erro ao registrar saída: ${result.error}`);
+        }
+      } else {
+        // Saída por receita - processar múltiplos ingredientes
+        const recipe = mockRecipes.find(r => r.name === exitData.recipeName);
+        if (!recipe) {
+          toast.error('Receita não encontrada');
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Criar movimentações para cada ingrediente
+        const promises = recipe.ingredients.map(ingredient => {
+          const product = products.find(p => p.name === ingredient.itemName);
+          if (!product) {
+            console.warn(`Produto não encontrado para receita: ${ingredient.itemName}`);
+            return Promise.resolve({ success: true });
+          }
+
+          return addMovement({
+            productId: product.id,
+            type: 'exit',
+            quantity: ingredient.quantity * exitData.quantity,
+            reason: `Produção: ${exitData.recipeName} (${exitData.quantity} porções)`,
+            organizationId: organization.id,
+            userId: user.id
+          });
+        });
+
+        const results = await Promise.all(promises);
+        const failures = results.filter(r => !r.success);
+
+        if (failures.length === 0) {
+          toast.success(`Saída por receita registrada! ${recipe.ingredients.length} ingredientes processados.`);
+          setIsDialogOpen(false);
+          // Atualizar produtos e movimentações
+          await Promise.all([refreshProducts(), refreshMovements()]);
+        } else {
+          toast.error(`Erro ao processar ${failures.length} ingredientes da receita`);
+        }
+      }
+    } catch (error) {
+      console.error('Erro inesperado ao registrar saída:', error);
+      toast.error('Erro inesperado ao registrar saída');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const getExitIcon = (exitType: string) => {
-    switch (exitType) {
-      case 'production':
+  if (!organization) {
+    return (
+      <div className="page-container">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando dados da organização...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const getExitIcon = (type: string) => {
+    switch (type) {
+      case 'exit':
         return <TrendingDown className="w-5 h-5 text-blue-600" />;
       case 'loss':
         return <AlertTriangle className="w-5 h-5 text-red-600" />;
-      case 'adjustment':
-        return <Minus className="w-5 h-5 text-orange-600" />;
       default:
         return <Package className="w-5 h-5" />;
     }
   };
 
-  const getExitBadge = (exitType: string) => {
-    switch (exitType) {
-      case 'production':
-        return <Badge className="bg-blue-100 text-blue-800">Produção</Badge>;
+  const getExitBadge = (type: string) => {
+    switch (type) {
+      case 'exit':
+        return <Badge className="bg-blue-100 text-blue-800">Saída</Badge>;
       case 'loss':
         return <Badge className="bg-red-100 text-red-800">Perda</Badge>;
-      case 'adjustment':
-        return <Badge className="bg-orange-100 text-orange-800">Ajuste</Badge>;
       default:
-        return <Badge>Saída</Badge>;
+        return <Badge>Movimento</Badge>;
     }
   };
+
+  // Filter movements to show only exits and losses
+  const exitMovements = movements.filter(m => m.type === 'exit' || m.type === 'loss');
 
   return (
     <div className="p-8 space-y-6">
@@ -162,16 +197,19 @@ export function StockExits() {
         
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700">
+            <Button className="bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700" disabled={isSubmitting}>
               <TrendingDown className="w-4 h-4 mr-2" />
               Nova Saída
             </Button>
           </DialogTrigger>
           <ExitFormDialog 
+            products={products}
+            productsLoading={productsLoading}
             exitMode={exitMode}
             onModeChange={setExitMode}
             onSave={handleSaveExit}
             onCancel={() => setIsDialogOpen(false)}
+            isSubmitting={isSubmitting}
           />
         </Dialog>
       </div>
@@ -202,64 +240,46 @@ export function StockExits() {
 
       {/* Lista de saídas */}
       <div className="grid gap-4">
-        {exits.map((exit) => (
-          <Card key={exit.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-red-100 to-red-200 rounded-xl flex items-center justify-center">
-                    {exit.type === 'recipe' ? (
-                      <ChefHat className="w-7 h-7 text-red-600" />
-                    ) : (
-                      getExitIcon(exit.exitType)
+        {exitMovements.map((exit) => {
+          const product = products.find(p => p.id === exit.productId);
+          return (
+            <Card key={exit.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-red-100 to-red-200 rounded-xl flex items-center justify-center">
+                      {getExitIcon(exit.type)}
+                    </div>
+                    <div className="space-y-1">
+                      <h3 className="text-lg font-semibold">
+                        {product?.name || 'Produto não encontrado'}
+                      </h3>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>📦 {exit.quantity} {product?.unit || 'un'}</span>
+                        <span>📅 {exit.createdAt.toLocaleDateString('pt-BR')} às {exit.createdAt.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground italic">
+                        {exit.reason}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    {getExitBadge(exit.type)}
+                    {exit.totalCost && (
+                      <div className="text-sm text-muted-foreground mt-1">
+                        R$ {exit.totalCost.toFixed(2)}
+                      </div>
                     )}
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="text-lg font-semibold">
-                      {exit.type === 'recipe' ? exit.recipeName : exit.itemName}
-                    </h3>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>📦 {exit.quantity} {exit.unit}</span>
-                      <span>📅 {exit.date} às {exit.time}</span>
-                      {exit.type === 'recipe' && (
-                        <Badge variant="outline" className="text-xs">
-                          Receita
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-sm text-muted-foreground italic">
-                      {exit.reason}
-                    </p>
-                  </div>
                 </div>
-                
-                <div className="text-right">
-                  {getExitBadge(exit.exitType)}
-                </div>
-              </div>
-              
-              {/* Detalhes da receita */}
-              {exit.type === 'recipe' && (
-                <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-                  <h4 className="text-sm font-medium mb-2">Ingredientes utilizados:</h4>
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    {mockRecipes.find(r => r.name === exit.recipeName)?.ingredients.map((ingredient, index) => (
-                      <div key={index} className="flex justify-between">
-                        <span>{ingredient.itemName}</span>
-                        <span className="font-medium">
-                          {(ingredient.quantity * exit.quantity).toFixed(2)} {ingredient.unit}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        ))}
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
-      {exits.length === 0 && (
+      {exitMovements.length === 0 && (
         <Card className="border-0 shadow-lg">
           <CardContent className="p-12 text-center">
             <TrendingDown className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -275,20 +295,22 @@ export function StockExits() {
 }
 
 interface ExitFormDialogProps {
+  products: any[];
+  productsLoading: boolean;
   exitMode: 'individual' | 'recipe';
   onModeChange: (mode: 'individual' | 'recipe') => void;
-  onSave: (exit: Omit<StockExit, 'id' | 'date' | 'time'>) => void;
+  onSave: (exit: any) => void;
   onCancel: () => void;
+  isSubmitting: boolean;
 }
 
-function ExitFormDialog({ exitMode, onModeChange, onSave, onCancel }: ExitFormDialogProps) {
+function ExitFormDialog({ products, productsLoading, exitMode, onModeChange, onSave, onCancel, isSubmitting }: ExitFormDialogProps) {
   const [formData, setFormData] = useState({
-    itemName: '',
+    productId: '',
     recipeName: '',
     quantity: 0,
-    unit: '',
     reason: '',
-    exitType: 'production' as 'production' | 'loss' | 'adjustment'
+    exitType: 'exit' as 'exit' | 'loss'
   });
 
   const selectedRecipe = mockRecipes.find(r => r.name === formData.recipeName);
@@ -296,43 +318,34 @@ function ExitFormDialog({ exitMode, onModeChange, onSave, onCancel }: ExitFormDi
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
+    console.log('Submitting exit form data:', formData);
+    
     if (exitMode === 'individual') {
-      if (!formData.itemName || formData.quantity <= 0) {
-        toast.error('Preencha os campos obrigatórios');
+      if (!formData.productId || formData.quantity <= 0 || !formData.reason) {
+        toast.error('Preencha todos os campos obrigatórios para saída individual');
         return;
       }
-      const selectedItem = mockStockItems.find(item => item.name === formData.itemName);
+      
       onSave({
         type: 'individual',
-        itemName: formData.itemName,
+        productId: formData.productId,
         quantity: formData.quantity,
-        unit: selectedItem?.unit || '',
         reason: formData.reason,
         exitType: formData.exitType
       });
     } else {
       if (!formData.recipeName || formData.quantity <= 0) {
-        toast.error('Preencha os campos obrigatórios');
+        toast.error('Preencha todos os campos obrigatórios para saída por receita');
         return;
       }
+      
       onSave({
         type: 'recipe',
         recipeName: formData.recipeName,
         quantity: formData.quantity,
-        unit: 'Porções',
-        reason: formData.reason,
-        exitType: 'production'
+        reason: formData.reason || `Produção: ${formData.recipeName}`
       });
     }
-  };
-
-  const handleItemChange = (itemName: string) => {
-    const item = mockStockItems.find(i => i.name === itemName);
-    setFormData({
-      ...formData,
-      itemName,
-      unit: item?.unit || ''
-    });
   };
 
   return (
@@ -354,59 +367,73 @@ function ExitFormDialog({ exitMode, onModeChange, onSave, onCancel }: ExitFormDi
           <TabsContent value="individual" className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="exitType">Tipo de Saída *</Label>
-              <Select value={formData.exitType} onValueChange={(value: 'production' | 'loss' | 'adjustment') => setFormData({ ...formData, exitType: value })}>
+              <Select value={formData.exitType} onValueChange={(value: 'exit' | 'loss') => setFormData({ ...formData, exitType: value })}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="production">Produção/Uso Normal</SelectItem>
+                  <SelectItem value="exit">Uso Normal/Produção</SelectItem>
                   <SelectItem value="loss">Perda/Descarte</SelectItem>
-                  <SelectItem value="adjustment">Ajuste de Estoque</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="item">Produto *</Label>
-                <Select value={formData.itemName} onValueChange={handleItemChange}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o produto" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {mockStockItems.map((item) => (
-                      <SelectItem key={item.name} value={item.name}>
-                        <div className="flex items-center justify-between w-full">
-                          <span>{item.name}</span>
-                          <Badge variant="outline" className="ml-2 text-xs">
-                            {item.currentStock} {item.unit}
-                          </Badge>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="product">Produto *</Label>
+                {productsLoading ? (
+                  <div className="flex items-center gap-2 p-2">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span className="text-sm">Carregando produtos...</span>
+                  </div>
+                ) : (
+                  <Select value={formData.productId} onValueChange={(value) => setFormData({ ...formData, productId: value })}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione o produto" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {products.map((product) => (
+                        <SelectItem key={product.id} value={product.id}>
+                          <div className="flex items-center justify-between w-full">
+                            <span>{product.name}</span>
+                            <Badge variant="outline" className="ml-2 text-xs">
+                              {product.currentStock} {product.unit}
+                            </Badge>
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
               
               <div className="space-y-2">
                 <Label htmlFor="quantity">Quantidade *</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="quantity"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
-                    required
-                  />
-                  {formData.unit && (
-                    <div className="flex items-center px-3 border rounded-md bg-muted">
-                      <span className="text-sm">{formData.unit}</span>
-                    </div>
-                  )}
-                </div>
+                <Input
+                  id="quantity"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.quantity}
+                  onChange={(e) => setFormData({ ...formData, quantity: parseFloat(e.target.value) || 0 })}
+                  required
+                />
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reason">Motivo/Observação *</Label>
+              <Textarea
+                id="reason"
+                value={formData.reason}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                placeholder={
+                  formData.exitType === 'loss'
+                    ? 'Ex: Produto vencido, contaminação, quebra'
+                    : 'Ex: Produção, uso interno, venda'
+                }
+                required
+              />
             </div>
           </TabsContent>
 
@@ -442,48 +469,49 @@ function ExitFormDialog({ exitMode, onModeChange, onSave, onCancel }: ExitFormDi
             </div>
 
             {selectedRecipe && (
-              <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                <h4 className="font-medium mb-2 flex items-center gap-2">
-                  <Calculator className="w-4 h-4" />
-                  Ingredientes que serão descontados:
-                </h4>
-                <div className="space-y-1 text-sm">
-                  {selectedRecipe.ingredients.map((ingredient, index) => (
-                    <div key={index} className="flex justify-between">
-                      <span>{ingredient.itemName}</span>
-                      <span className="font-medium">
-                        {(ingredient.quantity * formData.quantity).toFixed(2)} {ingredient.unit}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <Alert>
+                <Calculator className="w-4 h-4" />
+                <AlertDescription>
+                  <strong>Ingredientes que serão descontados:</strong>
+                  <div className="mt-2 space-y-1 text-sm">
+                    {selectedRecipe.ingredients.map((ingredient, index) => (
+                      <div key={index} className="flex justify-between">
+                        <span>{ingredient.itemName}</span>
+                        <span className="font-medium">
+                          {(ingredient.quantity * formData.quantity).toFixed(2)} {ingredient.unit}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </Alert>
             )}
+
+            <div className="space-y-2">
+              <Label htmlFor="recipeReason">Observação</Label>
+              <Textarea
+                id="recipeReason"
+                value={formData.reason}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                placeholder="Ex: Produção para vendas do almoço"
+                rows={2}
+              />
+            </div>
           </TabsContent>
 
-          <div className="space-y-2">
-            <Label htmlFor="reason">Motivo/Observação *</Label>
-            <Textarea
-              id="reason"
-              value={formData.reason}
-              onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
-              placeholder={
-                exitMode === 'recipe' 
-                  ? 'Ex: Produção para vendas do almoço'
-                  : formData.exitType === 'loss'
-                    ? 'Ex: Produto vencido, contaminação, quebra'
-                    : 'Ex: Produção, uso interno, ajuste de inventário'
-              }
-              required
-            />
-          </div>
-
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={onCancel}>
+            <Button type="button" variant="outline" onClick={onCancel} disabled={isSubmitting}>
               Cancelar
             </Button>
-            <Button type="submit">
-              Registrar Saída
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Registrando...
+                </>
+              ) : (
+                'Registrar Saída'
+              )}
             </Button>
           </div>
         </form>

@@ -89,6 +89,7 @@ export interface StockMovement {
   unitCost?: number;
   totalCost?: number;
   reason?: string;
+  invoice?: string;
   userId: string;
   createdAt: Date;
 }
@@ -290,20 +291,30 @@ export const getUserOrganization = async (userId: string) => {
 // Product functions
 export const createProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
+    // Gerar ID único para o produto
     const productRef = doc(collection(db, 'products'));
+    const productId = productRef.id;
+    
+    console.log('Creating product with ID:', productId);
+    console.log('Product data:', productData);
+    
     const product: Omit<Product, 'id'> = {
       ...productData,
       createdAt: new Date(),
       updatedAt: new Date()
     };
     
-    await setDoc(doc(db, 'products', productRef.id), product);
+    // Usar o ID gerado para criar o documento
+    await setDoc(productRef, product);
+    
+    console.log('Product created successfully with ID:', productId);
     
     return {
       success: true,
-      product: { id: productRef.id, ...product }
+      product: { id: productId, ...product }
     };
   } catch (error: any) {
+    console.error('Error creating product:', error);
     return {
       success: false,
       error: error.message
@@ -313,6 +324,8 @@ export const createProduct = async (productData: Omit<Product, 'id' | 'createdAt
 
 export const getOrganizationProducts = async (organizationId: string) => {
   try {
+    console.log('Fetching products for organization:', organizationId);
+    
     const q = query(
       collection(db, 'products'),
       where('organizationId', '==', organizationId),
@@ -320,15 +333,20 @@ export const getOrganizationProducts = async (organizationId: string) => {
     );
     
     const querySnapshot = await getDocs(q);
+    console.log('Products query result:', querySnapshot.size, 'documents');
+    
     const products = querySnapshot.docs.map(doc => 
       convertTimestamp({ id: doc.id, ...doc.data() }) as Product
     );
+    
+    console.log('Processed products:', products.length);
     
     return {
       success: true,
       products
     };
   } catch (error: any) {
+    console.error('Error fetching products:', error);
     return {
       success: false,
       error: error.message
@@ -355,19 +373,43 @@ export const updateProductStock = async (productId: string, newStock: number) =>
 // Stock Movement functions
 export const createStockMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
   try {
+    console.log('Creating stock movement with data:', movementData);
+    
+    // Validar se productId existe
+    if (!movementData.productId) {
+      throw new Error('Product ID is required for stock movement');
+    }
+    
+    // Validação adicional para garantir que productId está definido
+    if (!movementData.productId) {
+      console.error('Erro: productId não definido em createStockMovement', movementData);
+      return {
+        success: false,
+        error: 'ID do produto não definido'
+      };
+    }
+    
     const batch = writeBatch(db);
     
     // Create movement
     const movementRef = doc(collection(db, 'stockMovements'));
+    const movementId = movementRef.id;
+    
+    console.log('Movement ID generated:', movementId);
+    
     const movement: Omit<StockMovement, 'id'> = {
       ...movementData,
       createdAt: new Date()
     };
     
-    batch.set(doc(db, 'stockMovements', movementRef.id), movement);
+    console.log('Movement data to save:', movement);
+    
+    batch.set(movementRef, movement);
     
     // Update product stock
     const productRef = doc(db, 'products', movementData.productId);
+    console.log('Updating product stock for ID:', movementData.productId);
+    
     const productDoc = await getDoc(productRef);
     
     if (productDoc.exists()) {
@@ -376,19 +418,27 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
         ? currentStock + movementData.quantity 
         : currentStock - movementData.quantity;
       
+      console.log('Stock update:', { currentStock, quantity: movementData.quantity, newStock });
+      
       batch.update(productRef, {
         currentStock: Math.max(0, newStock),
         updatedAt: new Date()
       });
+    } else {
+      console.error('Product not found for ID:', movementData.productId);
+      throw new Error('Product not found');
     }
     
     await batch.commit();
+    console.log('Stock movement created successfully');
     
     return {
       success: true,
-      movement: { id: movementRef.id, ...movement }
+      movement: { id: movementId, ...movement }
     };
   } catch (error: any) {
+    console.error('Error creating stock movement:', error);
+    console.error('Erro em createStockMovement:', error);
     return {
       success: false,
       error: error.message
@@ -398,6 +448,8 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
 
 export const getStockMovements = async (organizationId: string, limitCount = 50) => {
   try {
+    console.log('Fetching movements for organization:', organizationId);
+    
     const q = query(
       collection(db, 'stockMovements'),
       where('organizationId', '==', organizationId),
@@ -406,15 +458,20 @@ export const getStockMovements = async (organizationId: string, limitCount = 50)
     );
     
     const querySnapshot = await getDocs(q);
+    console.log('Movements query result:', querySnapshot.size, 'documents');
+    
     const movements = querySnapshot.docs.map(doc => 
       convertTimestamp({ id: doc.id, ...doc.data() }) as StockMovement
     );
+    
+    console.log('Processed movements:', movements.length);
     
     return {
       success: true,
       movements
     };
   } catch (error: any) {
+    console.error('Error fetching movements:', error);
     return {
       success: false,
       error: error.message
@@ -425,6 +482,31 @@ export const getStockMovements = async (organizationId: string, limitCount = 50)
 // Auth state observer
 export const onAuthStateChange = (callback: (user: FirebaseUser | null) => void) => {
   return onAuthStateChanged(auth, callback);
+};
+
+// Helper para debug
+export const debugFirestore = async () => {
+  try {
+    console.log('--- DEBUG FIRESTORE ---');
+    
+    // Listar todas as coleções
+    const collections = ['users', 'organizations', 'products', 'stockMovements'];
+    
+    for (const collectionName of collections) {
+      const snapshot = await getDocs(collection(db, collectionName));
+      console.log(`Collection ${collectionName}:`, snapshot.size, 'documents');
+      
+      // Mostrar alguns documentos de exemplo
+      const docs = snapshot.docs.slice(0, 3).map(doc => ({ id: doc.id, ...doc.data() }));
+      console.log(`Sample ${collectionName}:`, docs);
+    }
+    
+    console.log('--- END DEBUG ---');
+    return true;
+  } catch (error) {
+    console.error('Debug error:', error);
+    return false;
+  }
 };
 
 // Validation functions
