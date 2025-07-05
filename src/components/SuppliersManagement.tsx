@@ -16,76 +16,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Plus, Search, Edit, Trash2, Truck, Phone, Mail, MapPin, Package, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
-import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy 
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
-
-interface Supplier {
-  id: string;
-  organizationId: string;
-  name: string;
-  cnpj: string;
-  phone: string;
-  email: string;
-  address: string;
-  products: string[];
-  status: 'active' | 'inactive';
-  notes: string;
-  lastOrder?: string;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { useSuppliers } from '@/hooks/useFirebaseData';
+import type { Supplier } from '@/lib/firebase';
 
 export function SuppliersManagement() {
-  const { organization, user } = useAuth();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { organization } = useAuth();
+  const { suppliers, loading, refreshSuppliers } = useSuppliers();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
-
-  // Carregar fornecedores do Firebase
-  const loadSuppliers = async () => {
-    if (!organization?.id) return;
-    
-    setLoading(true);
-    try {
-      const q = query(
-        collection(db, 'suppliers'),
-        where('organizationId', '==', organization.id),
-        orderBy('name')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const suppliersData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date()
-      })) as Supplier[];
-      
-      setSuppliers(suppliersData);
-    } catch (error) {
-      console.error('Erro ao carregar fornecedores:', error);
-      toast.error('Erro ao carregar fornecedores');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSuppliers();
-  }, [organization?.id]);
 
   const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,12 +35,21 @@ export function SuppliersManagement() {
   });
 
   const handleSaveSupplier = async (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!organization?.id || !user?.id) {
+    if (!organization?.id) {
       toast.error('Erro de autenticação');
       return;
     }
 
     try {
+      // Import Firebase functions here to avoid loading them at module level
+      const { 
+        collection, 
+        addDoc, 
+        updateDoc, 
+        doc, 
+        db 
+      } = await import('@/lib/firebase');
+      
       if (editingSupplier) {
         // Atualizar fornecedor existente
         const supplierRef = doc(db, 'suppliers', editingSupplier.id);
@@ -109,11 +58,6 @@ export function SuppliersManagement() {
           updatedAt: new Date()
         });
         
-        setSuppliers(suppliers.map(supplier => 
-          supplier.id === editingSupplier.id 
-            ? { ...supplierData, id: editingSupplier.id, createdAt: editingSupplier.createdAt, updatedAt: new Date() }
-            : supplier
-        ));
         toast.success('Fornecedor atualizado com sucesso!');
       } else {
         // Criar novo fornecedor
@@ -126,17 +70,12 @@ export function SuppliersManagement() {
         
         const docRef = await addDoc(collection(db, 'suppliers'), newSupplierData);
         
-        const newSupplier = {
-          id: docRef.id,
-          ...newSupplierData
-        };
-        
-        setSuppliers([...suppliers, newSupplier]);
         toast.success('Fornecedor criado com sucesso!');
       }
       
       setIsDialogOpen(false);
       setEditingSupplier(null);
+      await refreshSuppliers(); // Refresh the list
     } catch (error) {
       console.error('Erro ao salvar fornecedor:', error);
       toast.error('Erro ao salvar fornecedor');
@@ -150,9 +89,10 @@ export function SuppliersManagement() {
 
   const handleDeleteSupplier = async (id: string) => {
     try {
+      const { deleteDoc, doc, db } = await import('@/lib/firebase');
       await deleteDoc(doc(db, 'suppliers', id));
-      setSuppliers(suppliers.filter(supplier => supplier.id !== id));
       toast.success('Fornecedor excluído com sucesso!');
+      await refreshSuppliers(); // Refresh the list
     } catch (error) {
       console.error('Erro ao excluir fornecedor:', error);
       toast.error('Erro ao excluir fornecedor');
@@ -161,6 +101,7 @@ export function SuppliersManagement() {
 
   const handleToggleStatus = async (id: string) => {
     try {
+      const { updateDoc, doc, db } = await import('@/lib/firebase');
       const supplier = suppliers.find(s => s.id === id);
       if (!supplier) return;
 
@@ -171,13 +112,8 @@ export function SuppliersManagement() {
         updatedAt: new Date()
       });
       
-      setSuppliers(suppliers.map(supplier => 
-        supplier.id === id 
-          ? { ...supplier, status: newStatus, updatedAt: new Date() }
-          : supplier
-      ));
-      
       toast.success(`Fornecedor ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso!`);
+      await refreshSuppliers(); // Refresh the list
     } catch (error) {
       console.error('Erro ao alterar status:', error);
       toast.error('Erro ao alterar status do fornecedor');

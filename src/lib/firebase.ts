@@ -80,6 +80,44 @@ export interface Product {
   updatedAt: Date;
 }
 
+export interface Recipe {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  category: string;
+  ingredients: RecipeIngredient[];
+  totalCost: number;
+  servings: number;
+  costPerServing: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RecipeIngredient {
+  productId: string;
+  itemName: string;
+  quantity: number;
+  unit: string;
+  cost: number;
+}
+
+export interface Supplier {
+  id: string;
+  organizationId: string;
+  name: string;
+  cnpj: string;
+  phone: string;
+  email: string;
+  address: string;
+  products: string[];
+  status: 'active' | 'inactive';
+  notes: string;
+  lastOrder?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface StockMovement {
   id: string;
   organizationId: string;
@@ -363,6 +401,72 @@ export const updateProductStock = async (productId: string, newStock: number) =>
     
     return { success: true };
   } catch (error: any) {
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// Recipe functions
+export const getOrganizationRecipes = async (organizationId: string) => {
+  try {
+    console.log('Fetching recipes for organization:', organizationId);
+    
+    const q = query(
+      collection(db, 'recipes'),
+      where('organizationId', '==', organizationId),
+      orderBy('name')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    console.log('Recipes query result:', querySnapshot.size, 'documents');
+    
+    const recipes = querySnapshot.docs.map(doc => 
+      convertTimestamp({ id: doc.id, ...doc.data() }) as Recipe
+    );
+    
+    console.log('Processed recipes:', recipes.length);
+    
+    return {
+      success: true,
+      recipes
+    };
+  } catch (error: any) {
+    console.error('Error fetching recipes:', error);
+    return {
+      success: false,
+      error: error.message
+    };
+  }
+};
+
+// Supplier functions
+export const getOrganizationSuppliers = async (organizationId: string) => {
+  try {
+    console.log('Fetching suppliers for organization:', organizationId);
+    
+    const q = query(
+      collection(db, 'suppliers'),
+      where('organizationId', '==', organizationId),
+      orderBy('name')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    console.log('Suppliers query result:', querySnapshot.size, 'documents');
+    
+    const suppliers = querySnapshot.docs.map(doc => 
+      convertTimestamp({ id: doc.id, ...doc.data() }) as Supplier
+    );
+    
+    console.log('Processed suppliers:', suppliers.length);
+    
+    return {
+      success: true,
+      suppliers
+    };
+  } catch (error: any) {
+    console.error('Error fetching suppliers:', error);
     return {
       success: false,
       error: error.message
