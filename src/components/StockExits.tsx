@@ -28,6 +28,9 @@ import {
 } from 'lucide-react';
 import { useProducts, useStockMovements } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffect } from 'react';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 // Mock recipes data - will be replaced with real data later
 // Função para buscar receitas do Firebase
@@ -385,8 +388,8 @@ function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeCh
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {recipes.map((recipe) => (
-                    <SelectItem key={recipe.id} value={recipe.name}>
+                  <SelectItem value="exit">Saída Normal</SelectItem>
+                  <SelectItem value="loss">Perda</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -461,6 +464,8 @@ function ExitFormDialog({ products, productsLoading, recipes, exitMode, onModeCh
                   <SelectContent>
                     {mockRecipes.map((recipe) => (
                       <SelectItem key={recipe.id} value={recipe.name}>
+                       {recipe.name}
+                     </SelectItem>
                         {recipe.name}
                       </SelectItem>
                     ))}
