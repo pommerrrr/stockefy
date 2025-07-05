@@ -17,7 +17,8 @@ import { Plus, Search, Edit, Trash2, Truck, Phone, Mail, MapPin, Package, Loader
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
 import { useSuppliers } from '@/hooks/useFirebaseData';
-import type { Supplier } from '@/lib/firebase';
+import { db, type Supplier } from '@/lib/firebase';
+import { collection, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 
 export function SuppliersManagement() {
   const { organization } = useAuth();
@@ -41,15 +42,6 @@ export function SuppliersManagement() {
     }
 
     try {
-      // Import Firebase functions here to avoid loading them at module level
-      const { 
-        collection, 
-        addDoc, 
-        updateDoc, 
-        doc, 
-        db 
-      } = await import('@/lib/firebase');
-      
       if (editingSupplier) {
         // Atualizar fornecedor existente
         const supplierRef = doc(db, 'suppliers', editingSupplier.id);
@@ -89,7 +81,6 @@ export function SuppliersManagement() {
 
   const handleDeleteSupplier = async (id: string) => {
     try {
-      const { deleteDoc, doc, db } = await import('@/lib/firebase');
       await deleteDoc(doc(db, 'suppliers', id));
       toast.success('Fornecedor excluído com sucesso!');
       await refreshSuppliers(); // Refresh the list
@@ -101,7 +92,6 @@ export function SuppliersManagement() {
 
   const handleToggleStatus = async (id: string) => {
     try {
-      const { updateDoc, doc, db } = await import('@/lib/firebase');
       const supplier = suppliers.find(s => s.id === id);
       if (!supplier) return;
 
