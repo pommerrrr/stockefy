@@ -89,6 +89,7 @@ export interface StockMovement {
   unitCost?: number;
   totalCost?: number;
   reason?: string;
+  invoice?: string;
   userId: string;
   createdAt: Date;
 }

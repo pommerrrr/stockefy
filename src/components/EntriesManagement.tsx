@@ -51,7 +51,8 @@ export function EntriesManagement() {
         cost: movement.totalCost || 0,
         supplier: movement.reason?.replace('Entrada - ', '') || 'Fornecedor não informado',
         date: movement.createdAt.toLocaleDateString('pt-BR'),
-        notes: movement.reason
+        notes: movement.reason,
+        invoice: movement.invoice
       };
     });
 
@@ -114,6 +115,7 @@ export function EntriesManagement() {
         unitCost: entryData.unitCost,
         totalCost: entryData.quantity * entryData.unitCost,
         reason: `Entrada - ${entryData.supplier || 'Fornecedor não informado'}`,
+        invoice: entryData.invoice,
         organizationId: organization.id,
         userId: user.id
       });

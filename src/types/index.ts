@@ -88,6 +88,7 @@ export interface StockMovement {
   unitCost?: number;
   totalCost?: number;
   reason?: string;
+  invoice?: string;
   recipeId?: string; // Para saídas por receita
   userId: string;
   createdAt: Date;

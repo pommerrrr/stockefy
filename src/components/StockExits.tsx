@@ -52,8 +52,8 @@ const mockRecipes = [
 
 export function StockExits() {
   const { user, organization } = useAuth();
-  const { products, loading: productsLoading } = useProducts();
-  const { addMovement, movements } = useStockMovements();
+  const { products, loading: productsLoading, refreshProducts } = useProducts();
+  const { addMovement, movements, refreshMovements } = useStockMovements();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [exitMode, setExitMode] = useState<'individual' | 'recipe'>('individual');
   const [isSubmitting, setIsSubmitting] = useState(false);
