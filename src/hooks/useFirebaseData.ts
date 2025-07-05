@@ -90,6 +90,7 @@ export const useProducts = () => {
 // Hook para gerenciar movimentações de estoque
 export const useStockMovements = () => {
   const { organization, user } = useAuth();
+  const { products } = useProducts(); // Adicionar esta linha
   const [movements, setMovements] = useState<StockMovement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -145,19 +146,7 @@ export const useStockMovements = () => {
       if (result.success && result.movement) {
         setMovements(prev => [result.movement!, ...prev]);
         
-        // Atualizar o produto na lista local
-        const updatedProduct = products.find(p => p.id === movementData.productId);
-        if (updatedProduct) {
-          const newStock = movementData.type === 'entry' 
-            ? updatedProduct.currentStock + movementData.quantity
-            : Math.max(0, updatedProduct.currentStock - movementData.quantity);
-            
-          setProducts(prev => prev.map(p => 
-            p.id === movementData.productId 
-              ? { ...p, currentStock: newStock } 
-              : p
-          ));
-        }
+        // Nota: Atualização do produto é feita no Firebase automaticamente
         
         return { success: true };
       } else {
