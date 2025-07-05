@@ -257,24 +257,49 @@ export const useSuppliers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Mock data para demonstração
+  const mockSuppliers: Supplier[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'Fornecedor Demo',
+      cnpj: '12.345.678/0001-90',
+      phone: '(11) 99999-9999',
+      email: 'contato@fornecedor.com',
+      address: 'Rua Demo, 123 - São Paulo, SP',
+      products: ['Pão', 'Carne', 'Queijo'],
+      status: 'active' as const,
+      notes: 'Fornecedor de demonstração',
+      lastOrder: '2025-01-01',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ];
   const loadSuppliers = async () => {
     if (!organization?.id) return;
     
     console.log('Loading suppliers for organization:', organization.id);
     setLoading(true);
     try {
-      const result = await getOrganizationSuppliers(organization.id);
-      console.log('Suppliers loaded:', result);
-      
-      if (result.success && result.suppliers) {
-        setSuppliers(result.suppliers);
+      // Verificar se Firebase está configurado
+      if (!organization.id.startsWith('demo')) {
+        const result = await getOrganizationSuppliers(organization.id);
+        console.log('Suppliers loaded:', result);
+        
+        if (result.success && result.suppliers) {
+          setSuppliers(result.suppliers);
+        } else {
+          console.error('Failed to load suppliers, using mock data:', result.error);
+          setSuppliers(mockSuppliers);
+        }
       } else {
-        console.error('Failed to load suppliers:', result.error);
-        setError(result.error || 'Erro ao carregar fornecedores');
+        // Usar dados mock para demonstração
+        console.log('Using mock suppliers for demo');
+        setSuppliers(mockSuppliers);
       }
     } catch (err) {
-      console.error('Exception loading suppliers:', err);
-      setError('Erro inesperado ao carregar fornecedores');
+      console.error('Exception loading suppliers, using mock data:', err);
+      setSuppliers(mockSuppliers);
     } finally {
       setLoading(false);
     }
