@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,10 +13,25 @@ import {
   DialogTrigger 
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Plus, Search, Edit, Trash2, Truck, Phone, Mail, MapPin, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Truck, Phone, Mail, MapPin, Package, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  getDocs, 
+  orderBy 
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface Supplier {
-  id: number;
+  id: string;
+  organizationId: string;
   name: string;
   cnpj: string;
   phone: string;
@@ -26,65 +41,51 @@ interface Supplier {
   status: 'active' | 'inactive';
   notes: string;
   lastOrder?: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Mock data
-const mockSuppliers: Supplier[] = [
-  {
-    id: 1,
-    name: 'Padaria Central',
-    cnpj: '12.345.678/0001-90',
-    phone: '(11) 99999-1111',
-    email: 'contato@padariacentral.com.br',
-    address: 'Rua das Flores, 123 - Centro',
-    products: ['Pão Brioche', 'Pão de Hambúrguer', 'Pão Artesanal'],
-    status: 'active',
-    notes: 'Entrega sempre às terças e sextas-feiras',
-    lastOrder: '2025-06-05'
-  },
-  {
-    id: 2,
-    name: 'Frigorífico Premium',
-    cnpj: '98.765.432/0001-10',
-    phone: '(11) 88888-2222',
-    email: 'vendas@frigoríficopremium.com.br',
-    address: 'Av. Industrial, 456 - Distrito Industrial',
-    products: ['Carne Angus 180g', 'Carne Suína', 'Frango'],
-    status: 'active',
-    notes: 'Melhor qualidade de carnes da região',
-    lastOrder: '2025-06-04'
-  },
-  {
-    id: 3,
-    name: 'Laticínios Brasil',
-    cnpj: '11.222.333/0001-44',
-    phone: '(11) 77777-3333',
-    email: 'pedidos@laticiniosbrasil.com.br',
-    address: 'Rodovia SP-123, Km 45',
-    products: ['Queijo Cheddar', 'Queijo Mussarela', 'Requeijão'],
-    status: 'active',
-    notes: 'Produtos sempre frescos',
-    lastOrder: '2025-06-03'
-  },
-  {
-    id: 4,
-    name: 'Distribuidora Antiga',
-    cnpj: '55.666.777/0001-88',
-    phone: '(11) 66666-4444',
-    email: 'antigo@distribuidora.com.br',
-    address: 'Rua Velha, 789',
-    products: ['Diversos'],
-    status: 'inactive',
-    notes: 'Fornecedor inativo - problemas de qualidade'
-  }
-];
-
 export function SuppliersManagement() {
-  const [suppliers, setSuppliers] = useState<Supplier[]>(mockSuppliers);
+  const { organization, user } = useAuth();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
+
+  // Carregar fornecedores do Firebase
+  const loadSuppliers = async () => {
+    if (!organization?.id) return;
+    
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'suppliers'),
+        where('organizationId', '==', organization.id),
+        orderBy('name')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const suppliersData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+      })) as Supplier[];
+      
+      setSuppliers(suppliersData);
+    } catch (error) {
+      console.error('Erro ao carregar fornecedores:', error);
+      toast.error('Erro ao carregar fornecedores');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSuppliers();
+  }, [organization?.id]);
 
   const filteredSuppliers = suppliers.filter(supplier => {
     const matchesSearch = supplier.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,17 +94,53 @@ export function SuppliersManagement() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleSaveSupplier = (supplierData: Omit<Supplier, 'id'>) => {
-    if (editingSupplier) {
-      setSuppliers(suppliers.map(supplier => 
-        supplier.id === editingSupplier.id ? { ...supplierData, id: editingSupplier.id } : supplier
-      ));
-    } else {
-      const newSupplier = { ...supplierData, id: Date.now() };
-      setSuppliers([...suppliers, newSupplier]);
+  const handleSaveSupplier = async (supplierData: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!organization?.id || !user?.id) {
+      toast.error('Erro de autenticação');
+      return;
     }
-    setIsDialogOpen(false);
-    setEditingSupplier(null);
+
+    try {
+      if (editingSupplier) {
+        // Atualizar fornecedor existente
+        const supplierRef = doc(db, 'suppliers', editingSupplier.id);
+        await updateDoc(supplierRef, {
+          ...supplierData,
+          updatedAt: new Date()
+        });
+        
+        setSuppliers(suppliers.map(supplier => 
+          supplier.id === editingSupplier.id 
+            ? { ...supplierData, id: editingSupplier.id, createdAt: editingSupplier.createdAt, updatedAt: new Date() }
+            : supplier
+        ));
+        toast.success('Fornecedor atualizado com sucesso!');
+      } else {
+        // Criar novo fornecedor
+        const newSupplierData = {
+          ...supplierData,
+          organizationId: organization.id,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        const docRef = await addDoc(collection(db, 'suppliers'), newSupplierData);
+        
+        const newSupplier = {
+          id: docRef.id,
+          ...newSupplierData
+        };
+        
+        setSuppliers([...suppliers, newSupplier]);
+        toast.success('Fornecedor criado com sucesso!');
+      }
+      
+      setIsDialogOpen(false);
+      setEditingSupplier(null);
+    } catch (error) {
+      console.error('Erro ao salvar fornecedor:', error);
+      toast.error('Erro ao salvar fornecedor');
+    }
   };
 
   const handleEditSupplier = (supplier: Supplier) => {
@@ -111,17 +148,54 @@ export function SuppliersManagement() {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteSupplier = (id: number) => {
-    setSuppliers(suppliers.filter(supplier => supplier.id !== id));
+  const handleDeleteSupplier = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'suppliers', id));
+      setSuppliers(suppliers.filter(supplier => supplier.id !== id));
+      toast.success('Fornecedor excluído com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir fornecedor:', error);
+      toast.error('Erro ao excluir fornecedor');
+    }
   };
 
-  const handleToggleStatus = (id: number) => {
-    setSuppliers(suppliers.map(supplier => 
-      supplier.id === id 
-        ? { ...supplier, status: supplier.status === 'active' ? 'inactive' : 'active' }
-        : supplier
-    ));
+  const handleToggleStatus = async (id: string) => {
+    try {
+      const supplier = suppliers.find(s => s.id === id);
+      if (!supplier) return;
+
+      const newStatus = supplier.status === 'active' ? 'inactive' : 'active';
+      
+      await updateDoc(doc(db, 'suppliers', id), {
+        status: newStatus,
+        updatedAt: new Date()
+      });
+      
+      setSuppliers(suppliers.map(supplier => 
+        supplier.id === id 
+          ? { ...supplier, status: newStatus, updatedAt: new Date() }
+          : supplier
+      ));
+      
+      toast.success(`Fornecedor ${newStatus === 'active' ? 'ativado' : 'desativado'} com sucesso!`);
+    } catch (error) {
+      console.error('Erro ao alterar status:', error);
+      toast.error('Erro ao alterar status do fornecedor');
+    }
   };
+
+  if (!organization) {
+    return (
+      <div className="page-container">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
+            <p className="text-muted-foreground">Carregando dados da organização...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-8 space-y-6">
@@ -196,115 +270,133 @@ export function SuppliersManagement() {
         </CardContent>
       </Card>
 
-      {/* Grid de fornecedores */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredSuppliers.map((supplier) => (
-          <Card key={supplier.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gradient-to-br from-cyan-100 to-cyan-200 rounded-xl flex items-center justify-center">
-                      <Truck className="w-6 h-6 text-cyan-600" />
+      {/* Loading state */}
+      {loading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="border-0 shadow-lg">
+              <CardContent className="p-6">
+                <div className="space-y-3 animate-pulse">
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg" />
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  <div className="h-2 bg-gray-200 rounded w-full" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Grid de fornecedores */
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredSuppliers.map((supplier) => (
+            <Card key={supplier.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 bg-gradient-to-br from-cyan-100 to-cyan-200 rounded-xl flex items-center justify-center">
+                        <Truck className="w-6 h-6 text-cyan-600" />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold leading-tight">{supplier.name}</h3>
+                        <Badge 
+                          variant={supplier.status === 'active' ? 'default' : 'secondary'}
+                          className={supplier.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                        >
+                          {supplier.status === 'active' ? 'Ativo' : 'Inativo'}
+                        </Badge>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold leading-tight">{supplier.name}</h3>
-                      <Badge 
-                        variant={supplier.status === 'active' ? 'default' : 'secondary'}
-                        className={supplier.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}
+                    
+                    <div className="flex gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleEditSupplier(supplier)}
                       >
-                        {supplier.status === 'active' ? 'Ativo' : 'Inativo'}
-                      </Badge>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        onClick={() => handleDeleteSupplier(supplier.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
                   
-                  <div className="flex gap-1">
-                    <Button 
-                      variant="ghost" 
+                  {/* Contato */}
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Phone className="w-4 h-4" />
+                      <span>{supplier.phone}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Mail className="w-4 h-4" />
+                      <span className="truncate">{supplier.email}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-xs">{supplier.address}</span>
+                    </div>
+                  </div>
+                  
+                  {/* Produtos */}
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Package className="w-4 h-4 text-muted-foreground" />
+                      <span className="text-sm font-medium">Produtos:</span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {supplier.products.slice(0, 3).map((product, index) => (
+                        <Badge key={index} variant="outline" className="text-xs">
+                          {product}
+                        </Badge>
+                      ))}
+                      {supplier.products.length > 3 && (
+                        <Badge variant="outline" className="text-xs">
+                          +{supplier.products.length - 3} mais
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Última compra */}
+                  {supplier.lastOrder && (
+                    <div className="text-xs text-muted-foreground">
+                      Última compra: {supplier.lastOrder}
+                    </div>
+                  )}
+                  
+                  {/* Observações */}
+                  {supplier.notes && (
+                    <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded italic">
+                      {supplier.notes}
+                    </div>
+                  )}
+                  
+                  {/* Ações */}
+                  <div className="pt-2 border-t">
+                    <Button
+                      variant={supplier.status === 'active' ? 'outline' : 'default'}
                       size="sm"
-                      onClick={() => handleEditSupplier(supplier)}
+                      onClick={() => handleToggleStatus(supplier.id)}
+                      className="w-full"
                     >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleDeleteSupplier(supplier.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
+                      {supplier.status === 'active' ? 'Desativar' : 'Ativar'}
                     </Button>
                   </div>
                 </div>
-                
-                {/* Contato */}
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Phone className="w-4 h-4" />
-                    <span>{supplier.phone}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Mail className="w-4 h-4" />
-                    <span className="truncate">{supplier.email}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <MapPin className="w-4 h-4" />
-                    <span className="text-xs">{supplier.address}</span>
-                  </div>
-                </div>
-                
-                {/* Produtos */}
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Package className="w-4 h-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Produtos:</span>
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {supplier.products.slice(0, 3).map((product, index) => (
-                      <Badge key={index} variant="outline" className="text-xs">
-                        {product}
-                      </Badge>
-                    ))}
-                    {supplier.products.length > 3 && (
-                      <Badge variant="outline" className="text-xs">
-                        +{supplier.products.length - 3} mais
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Última compra */}
-                {supplier.lastOrder && (
-                  <div className="text-xs text-muted-foreground">
-                    Última compra: {supplier.lastOrder}
-                  </div>
-                )}
-                
-                {/* Observações */}
-                {supplier.notes && (
-                  <div className="text-xs text-muted-foreground bg-gray-50 p-2 rounded italic">
-                    {supplier.notes}
-                  </div>
-                )}
-                
-                {/* Ações */}
-                <div className="pt-2 border-t">
-                  <Button
-                    variant={supplier.status === 'active' ? 'outline' : 'default'}
-                    size="sm"
-                    onClick={() => handleToggleStatus(supplier.id)}
-                    className="w-full"
-                  >
-                    {supplier.status === 'active' ? 'Desativar' : 'Ativar'}
-                  </Button>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {filteredSuppliers.length === 0 && (
+      {!loading && filteredSuppliers.length === 0 && (
         <Card className="border-0 shadow-lg">
           <CardContent className="p-12 text-center">
             <Truck className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -321,7 +413,7 @@ export function SuppliersManagement() {
 
 interface SupplierFormDialogProps {
   supplier: Supplier | null;
-  onSave: (supplier: Omit<Supplier, 'id'>) => void;
+  onSave: (supplier: Omit<Supplier, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
 }
 
@@ -334,7 +426,9 @@ function SupplierFormDialog({ supplier, onSave, onCancel }: SupplierFormDialogPr
     address: supplier?.address || '',
     products: supplier?.products.join(', ') || '',
     status: supplier?.status || 'active' as 'active' | 'inactive',
-    notes: supplier?.notes || ''
+    notes: supplier?.notes || '',
+    lastOrder: supplier?.lastOrder || '',
+    organizationId: supplier?.organizationId || ''
   });
 
   const handleSubmit = (e: React.FormEvent) => {

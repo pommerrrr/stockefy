@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,6 +19,18 @@ import { toast } from 'sonner';
 import { Plus, Search, Edit, Trash2, ChefHat, Calculator, Loader2 } from 'lucide-react';
 import { useProducts } from '@/hooks/useFirebaseData';
 import { useAuth } from '@/contexts/AuthContext';
+import { 
+  collection, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  doc, 
+  query, 
+  where, 
+  getDocs, 
+  orderBy 
+} from 'firebase/firestore';
+import { db } from '@/lib/firebase';
 
 interface RecipeIngredient {
   productId: string;
@@ -29,7 +41,8 @@ interface RecipeIngredient {
 }
 
 interface Recipe {
-  id: number;
+  id: string;
+  organizationId: string;
   name: string;
   description: string;
   category: string;
@@ -37,65 +50,119 @@ interface Recipe {
   totalCost: number;
   servings: number;
   costPerServing: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-// Mock data - will be replaced with Firebase data
-const mockRecipes: Recipe[] = [
-  {
-    id: 1,
-    name: 'Hambúrguer Clássico',
-    description: 'Hambúrguer tradicional com carne, queijo e molho especial',
-    category: 'Hambúrgueres',
-    ingredients: [
-      { productId: '1', itemName: 'Pão Brioche', quantity: 1, unit: 'Unidade', cost: 1.50 },
-      { productId: '2', itemName: 'Carne Angus 180g', quantity: 0.18, unit: 'Kg', cost: 6.30 },
-      { productId: '3', itemName: 'Queijo Cheddar', quantity: 0.03, unit: 'Kg', cost: 0.87 },
-      { productId: '4', itemName: 'Molho Especial', quantity: 0.02, unit: 'Litro', cost: 0.30 }
-    ],
-    totalCost: 8.97,
-    servings: 1,
-    costPerServing: 8.97
-  },
-  {
-    id: 2,
-    name: 'Batata Frita Média',
-    description: 'Porção média de batata frita crocante',
-    category: 'Acompanhamentos',
-    ingredients: [
-      { productId: '5', itemName: 'Batata Palito', quantity: 0.15, unit: 'Kg', cost: 2.25 }
-    ],
-    totalCost: 2.25,
-    servings: 1,
-    costPerServing: 2.25
-  }
+// Categorias predefinidas para receitas
+const recipeCategories = [
+  'Hambúrgueres',
+  'Acompanhamentos', 
+  'Bebidas',
+  'Sobremesas',
+  'Pratos Principais',
+  'Entradas',
+  'Lanches',
+  'Pizzas',
+  'Massas',
+  'Saladas',
+  'Outros'
 ];
 
 export function RecipesManagement() {
-  const { organization } = useAuth();
+  const { organization, user } = useAuth();
   const { products, loading: productsLoading } = useProducts();
-  const [recipes, setRecipes] = useState<Recipe[]>(mockRecipes);
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
+
+  // Carregar receitas do Firebase
+  const loadRecipes = async () => {
+    if (!organization?.id) return;
+    
+    setLoading(true);
+    try {
+      const q = query(
+        collection(db, 'recipes'),
+        where('organizationId', '==', organization.id),
+        orderBy('name')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      const recipesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate() || new Date(),
+        updatedAt: doc.data().updatedAt?.toDate() || new Date()
+      })) as Recipe[];
+      
+      setRecipes(recipesData);
+    } catch (error) {
+      console.error('Erro ao carregar receitas:', error);
+      toast.error('Erro ao carregar receitas');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecipes();
+  }, [organization?.id]);
 
   const filteredRecipes = recipes.filter(recipe =>
     recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     recipe.category.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const handleSaveRecipe = (recipeData: Omit<Recipe, 'id'>) => {
-    if (editingRecipe) {
-      setRecipes(recipes.map(recipe => 
-        recipe.id === editingRecipe.id ? { ...recipeData, id: editingRecipe.id } : recipe
-      ));
-      toast.success('Receita atualizada com sucesso!');
-    } else {
-      const newRecipe = { ...recipeData, id: Date.now() };
-      setRecipes([...recipes, newRecipe]);
-      toast.success('Receita criada com sucesso!');
+  const handleSaveRecipe = async (recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!organization?.id || !user?.id) {
+      toast.error('Erro de autenticação');
+      return;
     }
-    setIsDialogOpen(false);
-    setEditingRecipe(null);
+
+    try {
+      if (editingRecipe) {
+        // Atualizar receita existente
+        const recipeRef = doc(db, 'recipes', editingRecipe.id);
+        await updateDoc(recipeRef, {
+          ...recipeData,
+          updatedAt: new Date()
+        });
+        
+        setRecipes(recipes.map(recipe => 
+          recipe.id === editingRecipe.id 
+            ? { ...recipeData, id: editingRecipe.id, createdAt: editingRecipe.createdAt, updatedAt: new Date() }
+            : recipe
+        ));
+        toast.success('Receita atualizada com sucesso!');
+      } else {
+        // Criar nova receita
+        const newRecipeData = {
+          ...recipeData,
+          organizationId: organization.id,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        const docRef = await addDoc(collection(db, 'recipes'), newRecipeData);
+        
+        const newRecipe = {
+          id: docRef.id,
+          ...newRecipeData
+        };
+        
+        setRecipes([...recipes, newRecipe]);
+        toast.success('Receita criada com sucesso!');
+      }
+      
+      setIsDialogOpen(false);
+      setEditingRecipe(null);
+    } catch (error) {
+      console.error('Erro ao salvar receita:', error);
+      toast.error('Erro ao salvar receita');
+    }
   };
 
   const handleEditRecipe = (recipe: Recipe) => {
@@ -103,9 +170,15 @@ export function RecipesManagement() {
     setIsDialogOpen(true);
   };
 
-  const handleDeleteRecipe = (id: number) => {
-    setRecipes(recipes.filter(recipe => recipe.id !== id));
-    toast.success('Receita excluída com sucesso!');
+  const handleDeleteRecipe = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'recipes', id));
+      setRecipes(recipes.filter(recipe => recipe.id !== id));
+      toast.success('Receita excluída com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir receita:', error);
+      toast.error('Erro ao excluir receita');
+    }
   };
 
   if (!organization) {
@@ -171,81 +244,99 @@ export function RecipesManagement() {
         </CardContent>
       </Card>
 
-      {/* Grid de receitas */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {filteredRecipes.map((recipe) => (
-          <Card key={recipe.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
-                    <ChefHat className="w-6 h-6 text-purple-600" />
-                  </div>
-                  <div className="flex gap-2">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleEditRecipe(recipe)}
-                    >
-                      <Edit className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleDeleteRecipe(recipe.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
+      {/* Loading state */}
+      {loading ? (
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[...Array(6)].map((_, i) => (
+            <Card key={i} className="border-0 shadow-lg">
+              <CardContent className="p-6">
+                <div className="space-y-3 animate-pulse">
+                  <div className="w-12 h-12 bg-gray-200 rounded-lg" />
+                  <div className="h-4 bg-gray-200 rounded w-3/4" />
+                  <div className="h-3 bg-gray-200 rounded w-1/2" />
+                  <div className="h-2 bg-gray-200 rounded w-full" />
                 </div>
-                
-                {/* Título e categoria */}
-                <div>
-                  <h3 className="text-lg font-semibold leading-tight">{recipe.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">{recipe.description}</p>
-                  <Badge variant="outline" className="mt-2">{recipe.category}</Badge>
-                </div>
-                
-                {/* Ingredientes */}
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium">Ingredientes:</h4>
-                  <div className="space-y-1">
-                    {recipe.ingredients.map((ingredient, index) => (
-                      <div key={index} className="flex justify-between text-xs bg-gray-50 p-2 rounded">
-                        <span className="truncate">{ingredient.itemName}</span>
-                        <span className="font-medium whitespace-nowrap ml-2">
-                          {ingredient.quantity} {ingredient.unit}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                
-                {/* Custo */}
-                <div className="pt-4 border-t">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Calculator className="w-4 h-4 text-muted-foreground" />
-                      <span className="text-sm text-muted-foreground">Custo por porção</span>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        /* Grid de receitas */
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredRecipes.map((recipe) => (
+            <Card key={recipe.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="flex items-start justify-between">
+                    <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
+                      <ChefHat className="w-6 h-6 text-purple-600" />
                     </div>
-                    <div className="text-right">
-                      <div className="text-lg font-bold text-purple-600">
-                        R$ {recipe.costPerServing.toFixed(2)}
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        Total: R$ {recipe.totalCost.toFixed(2)}
-                      </div>
+                    <div className="flex gap-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleEditRecipe(recipe)}
+                      >
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleDeleteRecipe(recipe.id)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
                     </div>
                   </div>
+                  
+                  {/* Título e categoria */}
+                  <div>
+                    <h3 className="text-lg font-semibold leading-tight">{recipe.name}</h3>
+                    <p className="text-sm text-muted-foreground mt-1">{recipe.description}</p>
+                    <Badge variant="outline" className="mt-2">{recipe.category}</Badge>
+                  </div>
+                  
+                  {/* Ingredientes */}
+                  <div className="space-y-2">
+                    <h4 className="text-sm font-medium">Ingredientes:</h4>
+                    <div className="space-y-1">
+                      {recipe.ingredients.map((ingredient, index) => (
+                        <div key={index} className="flex justify-between text-xs bg-gray-50 p-2 rounded">
+                          <span className="truncate">{ingredient.itemName}</span>
+                          <span className="font-medium whitespace-nowrap ml-2">
+                            {ingredient.quantity} {ingredient.unit}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Custo */}
+                  <div className="pt-4 border-t">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Calculator className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">Custo por porção</span>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-lg font-bold text-purple-600">
+                          R$ {recipe.costPerServing.toFixed(2)}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Total: R$ {recipe.totalCost.toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
 
-      {filteredRecipes.length === 0 && (
+      {!loading && filteredRecipes.length === 0 && (
         <Card className="border-0 shadow-lg">
           <CardContent className="p-12 text-center">
             <ChefHat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
@@ -264,7 +355,7 @@ interface RecipeFormDialogProps {
   recipe: Recipe | null;
   products: any[];
   productsLoading: boolean;
-  onSave: (recipe: Omit<Recipe, 'id'>) => void;
+  onSave: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => void;
   onCancel: () => void;
 }
 
@@ -332,7 +423,8 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
     onSave({
       ...formData,
       totalCost,
-      costPerServing
+      costPerServing,
+      organizationId: '' // Será preenchido no componente pai
     });
   };
 
@@ -361,13 +453,21 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
           
           <div className="space-y-2">
             <Label htmlFor="category">Categoria *</Label>
-            <Input
-              id="category"
-              value={formData.category}
-              onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-              placeholder="Ex: Hambúrgueres, Acompanhamentos"
-              required
-            />
+            <Select 
+              value={formData.category} 
+              onValueChange={(value) => setFormData({ ...formData, category: value })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione uma categoria" />
+              </SelectTrigger>
+              <SelectContent>
+                {recipeCategories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
@@ -397,81 +497,104 @@ function RecipeFormDialog({ recipe, products, productsLoading, onSave, onCancel 
         <div className="space-y-4">
           <h3 className="text-lg font-semibold">Ingredientes</h3>
           
-          {/* Adicionar ingrediente */}
-          <div className="grid grid-cols-4 gap-2 p-4 border rounded-lg bg-gray-50">
+          {/* Adicionar ingrediente - Layout corrigido */}
+          <div className="p-4 border rounded-lg bg-gray-50 space-y-4">
             {productsLoading ? (
-              <div className="col-span-4 flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">Carregando produtos...</span>
               </div>
             ) : (
               <>
-                <Select value={newIngredient.productId} onValueChange={(value) => {
-                  const product = products.find(p => p.id === value);
-                  setNewIngredient({ 
-                    ...newIngredient, 
-                    productId: value,
-                    itemName: product?.name || '',
-                    unit: product?.unit || ''
-                  });
-                }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Ingrediente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {products.map((product) => (
-                      <SelectItem key={product.id} value={product.id}>
-                        {product.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                
-                <Input
-                  type="number"
-                  placeholder="Quantidade"
-                  min="0"
-                  step="0.01"
-                  value={newIngredient.quantity}
-                  onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) || 0 })}
-                />
-                
-                <div className="flex items-center px-3 border rounded-md bg-white">
-                  <span className="text-sm text-muted-foreground">
-                    {newIngredient.unit || 'Un'}
-                  </span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Ingrediente *</Label>
+                    <Select value={newIngredient.productId} onValueChange={(value) => {
+                      const product = products.find(p => p.id === value);
+                      setNewIngredient({ 
+                        ...newIngredient, 
+                        productId: value,
+                        itemName: product?.name || '',
+                        unit: product?.unit || ''
+                      });
+                    }}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o ingrediente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {products.map((product) => (
+                          <SelectItem key={product.id} value={product.id}>
+                            {product.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Unidade</Label>
+                    <div className="flex items-center px-3 py-2 border rounded-md bg-white">
+                      <span className="text-sm text-muted-foreground">
+                        {newIngredient.unit || 'Selecione um produto'}
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 
-                <Button type="button" onClick={handleAddIngredient} disabled={!newIngredient.productId || newIngredient.quantity <= 0}>
-                  <Plus className="w-4 h-4" />
-                </Button>
+                <div className="flex gap-4 items-end">
+                  <div className="flex-1 space-y-2">
+                    <Label>Quantidade *</Label>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      step="0.01"
+                      value={newIngredient.quantity}
+                      onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) || 0 })}
+                    />
+                  </div>
+                  
+                  <Button 
+                    type="button" 
+                    onClick={handleAddIngredient} 
+                    disabled={!newIngredient.productId || newIngredient.quantity <= 0}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Adicionar
+                  </Button>
+                </div>
               </>
             )}
           </div>
 
-          {/* Lista de ingredientes */}
+          {/* Lista de ingredientes - Layout melhorado */}
           <div className="space-y-2">
             {formData.ingredients.map((ingredient, index) => (
-              <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex-1">
-                  <span className="font-medium">{ingredient.itemName}</span>
-                  <span className="text-muted-foreground ml-2">
-                    {ingredient.quantity} {ingredient.unit}
-                  </span>
+              <div key={index} className="flex items-center justify-between p-4 border rounded-lg bg-white">
+                <div className="flex-1 grid grid-cols-3 gap-4 items-center">
+                  <div>
+                    <span className="font-medium text-sm">{ingredient.itemName}</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="text-sm text-muted-foreground">
+                      {ingredient.quantity} {ingredient.unit}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-medium text-green-600">
+                      R$ {ingredient.cost.toFixed(2)}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">
-                    R$ {ingredient.cost.toFixed(2)}
-                  </span>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm"
-                    onClick={() => handleRemoveIngredient(index)}
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
-                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => handleRemoveIngredient(index)}
+                  className="ml-4"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </Button>
               </div>
             ))}
           </div>
