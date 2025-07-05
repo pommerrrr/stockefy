@@ -290,20 +290,30 @@ export const getUserOrganization = async (userId: string) => {
 // Product functions
 export const createProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
   try {
+    // Gerar ID único para o produto
     const productRef = doc(collection(db, 'products'));
+    const productId = productRef.id;
+    
+    console.log('Creating product with ID:', productId);
+    console.log('Product data:', productData);
+    
     const product: Omit<Product, 'id'> = {
       ...productData,
       createdAt: new Date(),
       updatedAt: new Date()
     };
     
-    await setDoc(doc(db, 'products', productRef.id), product);
+    // Usar o ID gerado para criar o documento
+    await setDoc(productRef, product);
+    
+    console.log('Product created successfully with ID:', productId);
     
     return {
       success: true,
-      product: { id: productRef.id, ...product }
+      product: { id: productId, ...product }
     };
   } catch (error: any) {
+    console.error('Error creating product:', error);
     return {
       success: false,
       error: error.message
@@ -355,6 +365,13 @@ export const updateProductStock = async (productId: string, newStock: number) =>
 // Stock Movement functions
 export const createStockMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
   try {
+    console.log('Creating stock movement with data:', movementData);
+    
+    // Validar se productId existe
+    if (!movementData.productId) {
+      throw new Error('Product ID is required for stock movement');
+    }
+    
     // Validação adicional para garantir que productId está definido
     if (!movementData.productId) {
       console.error('Erro: productId não definido em createStockMovement', movementData);
@@ -368,15 +385,23 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
     
     // Create movement
     const movementRef = doc(collection(db, 'stockMovements'));
+    const movementId = movementRef.id;
+    
+    console.log('Movement ID generated:', movementId);
+    
     const movement: Omit<StockMovement, 'id'> = {
       ...movementData,
       createdAt: new Date()
     };
     
-    batch.set(doc(db, 'stockMovements', movementRef.id), movement);
+    console.log('Movement data to save:', movement);
+    
+    batch.set(movementRef, movement);
     
     // Update product stock
     const productRef = doc(db, 'products', movementData.productId);
+    console.log('Updating product stock for ID:', movementData.productId);
+    
     const productDoc = await getDoc(productRef);
     
     if (productDoc.exists()) {
@@ -385,19 +410,26 @@ export const createStockMovement = async (movementData: Omit<StockMovement, 'id'
         ? currentStock + movementData.quantity 
         : currentStock - movementData.quantity;
       
+      console.log('Stock update:', { currentStock, quantity: movementData.quantity, newStock });
+      
       batch.update(productRef, {
         currentStock: Math.max(0, newStock),
         updatedAt: new Date()
       });
+    } else {
+      console.error('Product not found for ID:', movementData.productId);
+      throw new Error('Product not found');
     }
     
     await batch.commit();
+    console.log('Stock movement created successfully');
     
     return {
       success: true,
-      movement: { id: movementRef.id, ...movement }
+      movement: { id: movementId, ...movement }
     };
   } catch (error: any) {
+    console.error('Error creating stock movement:', error);
     console.error('Erro em createStockMovement:', error);
     return {
       success: false,
