@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
+import { checkFirebaseIndexes } from '@/lib/firebase';
 import { 
   getOrganizationProducts, 
   getStockMovements,
@@ -255,24 +255,25 @@ export const useRecipes = () => {
       organizationId: organization?.id || 'demo',
       name: 'Hambúrguer Clássico',
       description: 'Hambúrguer tradicional com queijo e salada',
+      category: 'Sanduíches',
       ingredients: [
         {
           productId: '1',
-          name: 'Pão Brioche',
+          itemName: 'Pão Brioche',
           quantity: 1,
           unit: 'Unidade',
-          cost: 1.50
+          cost: 1.20
         },
         {
           productId: '2',
-          name: 'Hambúrguer',
+          itemName: 'Hambúrguer',
           quantity: 180,
           unit: 'g',
           cost: 1.50
         },
         {
           productId: '3',
-          name: 'Queijo Cheddar',
+          itemName: 'Queijo Cheddar',
           quantity: 1,
           unit: 'Fatia',
           cost: 1.20
