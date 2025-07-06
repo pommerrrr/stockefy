@@ -64,22 +64,19 @@ export const useProducts = () => {
       // Verificar se Firebase está configurado
       if (!organization.id.startsWith('demo')) {
         const result = await getOrganizationProducts(organization.id);
-        console.log('Products loaded:', result);
-        
         if (result.success && result.products) {
           setProducts(result.products);
         } else {
-          console.error('Failed to load products, using mock data:', result.error);
-          setProducts(mockProducts);
+          console.error('Failed to load products:', result.error);
+          setError(result.error || 'Erro ao carregar produtos');
         }
       } else {
-        // Usar dados mock para demonstração
-        console.log('Using mock products for demo');
-        setProducts(mockProducts);
+        console.error('Failed to load products:', result.error);
+        setError(result.error || 'Erro ao carregar produtos');
       }
     } catch (err) {
-      console.error('Exception loading products, using mock data:', err);
-      setProducts(mockProducts);
+      console.error('Exception loading products:', err);
+      setError('Erro inesperado ao carregar produtos');
     } finally {
       setLoading(false);
     }
@@ -257,21 +254,28 @@ export const useRecipes = () => {
       id: '1',
       organizationId: organization?.id || 'demo',
       name: 'Hambúrguer Clássico',
-      description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
+      description: 'Hambúrguer tradicional com queijo e salada',
       ingredients: [
         {
           productId: '1',
-          productName: 'Pão Brioche',
+          name: 'Pão Brioche',
           quantity: 1,
           unit: 'Unidade',
           cost: 1.50
         },
         {
           productId: '2',
-          productName: 'Carne Bovina',
-          quantity: 0.15,
-          unit: 'Kg',
+          name: 'Hambúrguer',
+          quantity: 180,
+          unit: 'g',
           cost: 1.50
+        },
+        {
+          productId: '3',
+          name: 'Queijo Cheddar',
+          quantity: 1,
+          unit: 'Fatia',
+          cost: 1.20
         }
       ],
       totalCost: 4.20,
@@ -351,6 +355,7 @@ export const useSuppliers = () => {
       updatedAt: new Date()
     }
   ];
+
   const loadSuppliers = async () => {
     if (!organization?.id) return;
     
