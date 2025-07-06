@@ -248,30 +248,31 @@ export const useRecipes = () => {
       id: '1',
       organizationId: organization?.id || 'demo',
       name: 'Hambúrguer Clássico',
-      description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
-      category: 'Sanduíches',
+      description: 'Hambúrguer tradicional com queijo e salada',
+      category: 'Hambúrgueres',
       ingredients: [
         {
-          productId: '2',
-          productName: 'Pão Brioche',
+          productId: '1',
+          itemName: 'Pão Brioche',
           quantity: 1,
           unit: 'Unidade',
           cost: 1.50
         },
         {
-          productId: '1',
-          productName: 'MILHO CRUNCH',
+          productId: '2',
+          itemName: 'Carne Bovina',
+          quantity: 0.15,
+          unit: 'Kg',
+          cost: 2.50
+        },
+        {
+          productId: '3',
+          itemName: 'Queijo',
           quantity: 0.05,
           unit: 'Kg',
-          cost: 3.50
+          cost: 1.20
         }
       ],
-      instructions: [
-        'Aqueça o pão',
-        'Grelhe a carne',
-        'Monte o hambúrguer'
-      ],
-      prepTime: 15,
       totalCost: 4.20,
       servings: 1,
       costPerServing: 4.20,
