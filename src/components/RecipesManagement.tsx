@@ -1,112 +1,312 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
-} from '@/components/ui/dialog';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { toast } from 'sonner';
-import { Plus, Search, Edit, Trash2, ChefHat, Calculator, Loader2 } from 'lucide-react';
-import { useProducts } from '@/hooks/useFirebaseData';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
 import { 
-  collection, 
-  addDoc, 
-  updateDoc, 
-  deleteDoc, 
-  doc, 
-  query, 
-  where, 
-  getDocs, 
-  orderBy 
-} from 'firebase/firestore';
-import { db } from '@/lib/firebase';
+  getOrganizationProducts, 
+  getStockMovements,
+  getOrganizationRecipes,
+  getOrganizationSuppliers,
+  createProduct,
+  createStockMovement,
+  updateProductStock
+} from '@/lib/firebase';
+import type { Product, StockMovement, Recipe, Supplier } from '@/lib/firebase';
 
-interface RecipeIngredient {
-  productId: string;
-  itemName: string;
-  quantity: number;
-  unit: string;
-  cost: number;
-}
+// Hook para gerenciar produtos
+export const useProducts = () => {
+  const { organization } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-interface Recipe {
-  id: string;
-  organizationId: string;
-  name: string;
-  description: string;
-  category: string;
-  ingredients: RecipeIngredient[];
-  totalCost: number;
-  servings: number;
-  costPerServing: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
+  // Mock data para demonstração
+  const mockProducts: Product[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'MILHO CRUNCH',
+      category: 'Condimentos',
+      unit: 'Kg',
+      currentStock: 10,
+      minimumStock: 5,
+      costPrice: 70,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    },
+    {
+      id: '2',
+      organizationId: organization?.id || 'demo',
+      name: 'Pão Brioche',
+      category: 'Pães',
+      unit: 'Unidade',
+      currentStock: 50,
+      minimumStock: 20,
+      costPrice: 1.5,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ];
 
-// Categorias predefinidas para receitas - AGORA SERÃO USADAS PARA FILTROS E ORGANIZAÇÃO
-const recipeCategories = [
-  'Hambúrgueres',
-  'Acompanhamentos', 
-  'Bebidas',
-  'Sobremesas',
-  'Pratos Principais',
-  'Entradas',
-  'Lanches',
-  'Pizzas',
-  'Massas',
-  'Saladas',
-  'Outros'
-];
+  const loadProducts = async () => {
+    if (!organization?.id) return;
+    
+    // Verificar índices antes de fazer consultas
+    const indexesOK = await checkFirebaseIndexes(organization.id);
+    if (!indexesOK) {
+      setLoading(false);
+      return; // Para aqui se índices estão faltando
+    }
+    
+    console.log('Loading products for organization:', organization.id);
+    setLoading(true);
+    try {
+      // Verificar se Firebase está configurado
+      if (!organization.id.startsWith('demo')) {
+        const result = await getOrganizationProducts(organization.id);
+      } else {
+        console.error('Failed to load products:', result.error);
+        setError(result.error || 'Erro ao carregar produtos');
+      }
+    } catch (err) {
+      console.error('Exception loading products:', err);
+      setError('Erro inesperado ao carregar produtos');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-export function RecipesManagement() {
+  const addProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!organization?.id) return { success: false, error: 'Organização não encontrada' };
+
+    console.log('Adding product with organization ID:', organization.id);
+    console.log('Product data:', productData);
+
+    try {
+      const result = await createProduct({
+        ...productData,
+        organizationId: organization.id
+      });
+      
+      console.log('Create product result:', result);
+      
+      if (result.success && result.product) {
+        setProducts(prev => [...prev, result.product!]);
+        return { success: true, product: result.product };
+      } else {
+        console.error('Failed to create product:', result.error);
+        return { success: false, error: result.error || 'Erro ao criar produto' };
+      }
+    } catch (err) {
+      console.error('Exception creating product:', err);
+      return { success: false, error: 'Erro ao criar produto' };
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, [organization?.id]);
+
+  return {
+    products,
+    loading,
+    error,
+    addProduct,
+    refreshProducts: loadProducts
+  };
+};
+
+// Hook para gerenciar movimentações de estoque
+export const useStockMovements = () => {
   const { organization, user } = useAuth();
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMovements = async () => {
+    if (!organization?.id) return;
+    
+    // Verificar índices antes de fazer consultas
+    const indexesOK = await checkFirebaseIndexes(organization.id);
+    if (!indexesOK) {
+      setLoading(false);
+      return; // Para aqui se índices estão faltando
+    }
+    
+    console.log('Loading movements for organization:', organization.id);
+    setLoading(true);
+    try {
+      const result = await getStockMovements(organization.id);
+      console.log('Movements loaded:', result);
+      
+      if (result.success && result.movements) {
+        setMovements(result.movements);
+      } else {
+        console.error('Failed to load movements:', result.error);
+        setError(result.error || 'Erro ao carregar movimentações');
+      }
+    } catch (err) {
+      console.error('Exception loading movements:', err);
+      setError('Erro inesperado ao carregar movimentações');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
+    if (!organization?.id || !user?.id) return { success: false, error: 'Dados de autenticação não encontrados' };
+
+    console.log('Adding movement with data:', movementData);
+    
+    // Validação para garantir que productId está definido
+    if (!movementData.productId) {
+      console.error('Erro: productId não definido', movementData);
+      return { success: false, error: 'ID do produto não definido' };
+    }
+
+    try {
+      const result = await createStockMovement({
+        ...movementData,
+        organizationId: organization.id,
+        userId: user.id
+      });
+      
+      if (result.success && result.movement) {
+        setMovements(prev => [result.movement!, ...prev]);
+        
+        // A atualização do produto é feita automaticamente no Firebase
+        
+        return { success: true };
+      } else {
+        console.error('Failed to create movement:', result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (err) {
+      console.error('Erro ao criar movimentação:', err);
+      return { success: false, error: 'Erro ao criar movimentação' };
+    }
+  };
+
+  useEffect(() => {
+    loadMovements();
+  }, [organization?.id]);
+
+  return {
+    movements,
+    loading,
+    error,
+    addMovement,
+    refreshMovements: loadMovements
+  };
+};
+
+// Hook para estatísticas do dashboard
+export const useDashboardStats = () => {
   const { products, loading: productsLoading } = useProducts();
+  const { movements, loading: movementsLoading } = useStockMovements();
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    lowStockItems: 0,
+    totalValue: 0,
+    recentMovements: [] as any[],
+    lowStockAlerts: [] as any[]
+  });
+  
+  // Atualizar estatísticas quando os dados mudarem
+  React.useEffect(() => {
+    if (!productsLoading && !movementsLoading) {
+      setStats({
+        totalItems: products.length,
+        lowStockItems: products.filter(p => p.currentStock <= p.minimumStock).length,
+        totalValue: products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0),
+        recentMovements: movements.slice(0, 5),
+        lowStockAlerts: products
+          .filter(p => p.currentStock <= p.minimumStock)
+          .map(p => ({
+            item: p.name,
+            current: p.currentStock,
+            minimum: p.minimumStock,
+            unit: p.unit
+          }))
+      });
+    }
+  }, [products, movements, productsLoading, movementsLoading]);
+
+  return { ...stats, loading: productsLoading || movementsLoading };
+};
+
+// Hook para gerenciar receitas
+export const useRecipes = () => {
+  const { organization } = useAuth();
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingRecipe, setEditingRecipe] = useState<Recipe | null>(null);
-  const [customCategories, setCustomCategories] = useState<string[]>([]);
+  const [error, setError] = useState<string | null>(null);
 
-  // Combinar categorias predefinidas com personalizadas
-  const allCategories = [...recipeCategories, ...customCategories];
+  // Mock data para demonstração
+  const mockRecipes: Recipe[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'Hambúrguer Clássico',
+      description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
+      category: 'Sanduíches',
+      ingredients: [
+        {
+          productId: '2',
+          productName: 'Pão Brioche',
+          quantity: 1,
+          unit: 'Unidade',
+          cost: 1.50
+        },
+        {
+          productId: '1',
+          productName: 'MILHO CRUNCH',
+          quantity: 0.05,
+          unit: 'Kg',
+          cost: 3.50
+        }
+      ],
+      instructions: [
+        'Aqueça o pão',
+        'Grelhe a carne',
+        'Monte o hambúrguer'
+      ],
+      prepTime: 15,
+      totalCost: 4.20,
+      servings: 1,
+      costPerServing: 4.20,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ];
 
-  // Carregar receitas do Firebase
   const loadRecipes = async () => {
     if (!organization?.id) return;
     
+    console.log('Loading recipes for organization:', organization.id);
     setLoading(true);
     try {
-      const q = query(
-        collection(db, 'recipes'),
-        where('organizationId', '==', organization.id),
-        orderBy('name')
-      );
-      
-      const querySnapshot = await getDocs(q);
-      const recipesData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate() || new Date(),
-        updatedAt: doc.data().updatedAt?.toDate() || new Date()
-      })) as Recipe[];
-      
-      setRecipes(recipesData);
-    } catch (error) {
-      console.error('Erro ao carregar receitas:', error);
-      toast.error('Erro ao carregar receitas');
+      // Verificar se Firebase está configurado corretamente
+      try {
+        // Tentar carregar do Firebase
+        const result = await getOrganizationRecipes(organization.id);
+        console.log('Recipes loaded:', result);
+        
+        if (result.success && result.recipes) {
+          setRecipes(result.recipes);
+        } else {
+          console.warn('Failed to load recipes from Firebase, using mock data:', result.error);
+          setRecipes(mockRecipes);
+        }
+      } catch (firebaseError) {
+        // Se falhar, usar dados mock
+        console.warn('Error loading recipes from Firebase, using mock data:', firebaseError);
+        setRecipes(mockRecipes);
+      }
+    } catch (err) {
+      console.error('Exception loading recipes, using mock data:', err);
+      setRecipes(mockRecipes);
+      setError('Erro ao carregar receitas. Usando dados de demonstração.');
     } finally {
       setLoading(false);
     }
@@ -116,674 +316,77 @@ export function RecipesManagement() {
     loadRecipes();
   }, [organization?.id]);
 
-  // Filtrar receitas por busca e categoria
-  const filteredRecipes = recipes.filter(recipe => {
-    const matchesSearch = recipe.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         recipe.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory = categoryFilter === 'all' || recipe.category === categoryFilter;
-    return matchesSearch && matchesCategory;
-  });
+  return {
+    recipes,
+    loading,
+    error,
+    refreshRecipes: loadRecipes
+  };
+};
 
-  const handleSaveRecipe = async (recipeData: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!organization?.id || !user?.id) {
-      toast.error('Erro de autenticação');
-      return;
+// Hook para gerenciar fornecedores
+export const useSuppliers = () => {
+  const { organization } = useAuth();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock data para demonstração
+  const mockSuppliers: Supplier[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'Fornecedor Demo',
+      cnpj: '12.345.678/0001-90',
+      phone: '(11) 99999-9999',
+      email: 'contato@fornecedor.com',
+      address: 'Rua Demo, 123 - São Paulo, SP',
+      products: ['Pão', 'Carne', 'Queijo'],
+      status: 'active' as const,
+      notes: 'Fornecedor de demonstração',
+      lastOrder: '2025-01-01',
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
-
+  ];
+  const loadSuppliers = async () => {
+    if (!organization?.id) return;
+    
+    console.log('Loading suppliers for organization:', organization.id);
+    setLoading(true);
     try {
-      if (editingRecipe) {
-        // Atualizar receita existente
-        const recipeRef = doc(db, 'recipes', editingRecipe.id);
-        await updateDoc(recipeRef, {
-          ...recipeData,
-          updatedAt: new Date()
-        });
+      // Verificar se Firebase está configurado
+      if (!organization.id.startsWith('demo')) {
+        const result = await getOrganizationSuppliers(organization.id);
+        console.log('Suppliers loaded:', result);
         
-        setRecipes(recipes.map(recipe => 
-          recipe.id === editingRecipe.id 
-            ? { ...recipeData, id: editingRecipe.id, createdAt: editingRecipe.createdAt, updatedAt: new Date() }
-            : recipe
-        ));
-        toast.success('Receita atualizada com sucesso!');
+        if (result.success && result.suppliers) {
+          setSuppliers(result.suppliers);
+        } else {
+          console.error('Failed to load suppliers, using mock data:', result.error);
+          setSuppliers(mockSuppliers);
+        }
       } else {
-        // Criar nova receita
-        const newRecipeData = {
-          ...recipeData,
-          organizationId: organization.id,
-          createdAt: new Date(),
-          updatedAt: new Date()
-        };
-        
-        const docRef = await addDoc(collection(db, 'recipes'), newRecipeData);
-        
-        const newRecipe = {
-          id: docRef.id,
-          ...newRecipeData
-        };
-        
-        setRecipes([...recipes, newRecipe]);
-        toast.success('Receita criada com sucesso!');
+        // Usar dados mock para demonstração
+        console.log('Using mock suppliers for demo');
+        setSuppliers(mockSuppliers);
       }
-      
-      setIsDialogOpen(false);
-      setEditingRecipe(null);
-    } catch (error) {
-      console.error('Erro ao salvar receita:', error);
-      toast.error('Erro ao salvar receita');
+    } catch (err) {
+      console.error('Exception loading suppliers, using mock data:', err);
+      setSuppliers(mockSuppliers);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEditRecipe = (recipe: Recipe) => {
-    setEditingRecipe(recipe);
-    setIsDialogOpen(true);
+  useEffect(() => {
+    loadSuppliers();
+  }, [organization?.id]);
+
+  return {
+    suppliers,
+    loading,
+    error,
+    refreshSuppliers: loadSuppliers
   };
-
-  const handleDeleteRecipe = async (id: string) => {
-    try {
-      await deleteDoc(doc(db, 'recipes', id));
-      setRecipes(recipes.filter(recipe => recipe.id !== id));
-      toast.success('Receita excluída com sucesso!');
-    } catch (error) {
-      console.error('Erro ao excluir receita:', error);
-      toast.error('Erro ao excluir receita');
-    }
-  };
-
-  if (!organization) {
-    return (
-      <div className="page-container">
-        <div className="flex items-center justify-center h-64">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4" />
-            <p className="text-muted-foreground">Carregando dados da organização...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="p-8 space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-purple-600 to-purple-500 bg-clip-text text-transparent">
-            Fichas Técnicas
-          </h1>
-          <p className="text-muted-foreground">
-            Gerencie as receitas e calcule custos de produção automaticamente
-          </p>
-        </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              onClick={() => setEditingRecipe(null)}
-              className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Nova Receita
-            </Button>
-          </DialogTrigger>
-          <RecipeFormDialog 
-            recipe={editingRecipe} 
-            products={products}
-            productsLoading={productsLoading}
-            onSave={handleSaveRecipe}
-            onCancel={() => {
-              setIsDialogOpen(false);
-              setEditingRecipe(null);
-            }}
-            customCategories={customCategories}
-            onAddCustomCategory={(category) => setCustomCategories(prev => [...prev, category])}
-          />
-        </Dialog>
-      </div>
-
-      {/* Barra de pesquisa e filtros */}
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-4">
-          <div className="flex gap-4 items-center">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar receitas por nome ou descrição..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            
-            {/* Filtro por categoria */}
-            <div className="flex gap-2">
-              <Button
-                variant={categoryFilter === 'all' ? 'default' : 'outline'}
-                onClick={() => setCategoryFilter('all')}
-                size="sm"
-              >
-                Todas
-              </Button>
-              {allCategories.slice(0, 4).map((category) => (
-                <Button
-                  key={category}
-                  variant={categoryFilter === category ? 'default' : 'outline'}
-                  onClick={() => setCategoryFilter(category)}
-                  size="sm"
-                >
-                  {category}
-                </Button>
-              ))}
-              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                <SelectTrigger className="w-32">
-                  <SelectValue placeholder="Mais..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {allCategories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Loading state */}
-      {loading ? (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[...Array(6)].map((_, i) => (
-            <Card key={i} className="border-0 shadow-lg">
-              <CardContent className="p-6">
-                <div className="space-y-3 animate-pulse">
-                  <div className="w-12 h-12 bg-gray-200 rounded-lg" />
-                  <div className="h-4 bg-gray-200 rounded w-3/4" />
-                  <div className="h-3 bg-gray-200 rounded w-1/2" />
-                  <div className="h-2 bg-gray-200 rounded w-full" />
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      ) : (
-        /* Grid de receitas */
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredRecipes.map((recipe) => (
-            <Card key={recipe.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow">
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {/* Header */}
-                  <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 bg-gradient-to-br from-purple-100 to-purple-200 rounded-xl flex items-center justify-center">
-                      <ChefHat className="w-6 h-6 text-purple-600" />
-                    </div>
-                    <div className="flex gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleEditRecipe(recipe)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm"
-                        onClick={() => handleDeleteRecipe(recipe.id)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                  
-                  {/* Título e categoria */}
-                  <div>
-                    <h3 className="text-lg font-semibold leading-tight">{recipe.name}</h3>
-                    <p className="text-sm text-muted-foreground mt-1">{recipe.description}</p>
-                    <Badge variant="outline" className="mt-2">{recipe.category}</Badge>
-                  </div>
-                  
-                  {/* Ingredientes */}
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium">Ingredientes:</h4>
-                    <div className="space-y-1">
-                      {recipe.ingredients.map((ingredient, index) => (
-                        <div key={index} className="flex justify-between text-xs bg-gray-50 p-2 rounded">
-                          <span className="truncate">{ingredient.itemName}</span>
-                          <span className="font-medium whitespace-nowrap ml-2">
-                            {ingredient.quantity} {ingredient.unit}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* Custo */}
-                  <div className="pt-4 border-t">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Calculator className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">Custo por porção</span>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-lg font-bold text-purple-600">
-                          R$ {recipe.costPerServing.toFixed(2)}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          Total: R$ {recipe.totalCost.toFixed(2)}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-
-      {!loading && filteredRecipes.length === 0 && (
-        <Card className="border-0 shadow-lg">
-          <CardContent className="p-12 text-center">
-            <ChefHat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">Nenhuma receita encontrada</h3>
-            <p className="text-muted-foreground">
-              {searchTerm || categoryFilter !== 'all' ? 'Tente ajustar sua busca ou filtros' : 'Comece criando sua primeira ficha técnica'}
-            </p>
-          </CardContent>
-        </Card>
-      )}
-    </div>
-  );
-}
-
-interface RecipeFormDialogProps {
-  recipe: Recipe | null;
-  products: any[];
-  productsLoading: boolean;
-  onSave: (recipe: Omit<Recipe, 'id' | 'createdAt' | 'updatedAt'>) => void;
-  onCancel: () => void;
-  customCategories: string[];
-  onAddCustomCategory: (category: string) => void;
-}
-
-function RecipeFormDialog({ 
-  recipe, 
-  products, 
-  productsLoading, 
-  onSave, 
-  onCancel, 
-  customCategories, 
-  onAddCustomCategory 
-}: RecipeFormDialogProps) {
-  const [formData, setFormData] = useState({
-    name: recipe?.name || '',
-    description: recipe?.description || '',
-    category: recipe?.category || '',
-    servings: recipe?.servings || 1,
-    ingredients: recipe?.ingredients || []
-  });
-
-  const [newIngredient, setNewIngredient] = useState({
-    productId: '',
-    itemName: '',
-    quantity: 0,
-    unit: '',
-    cost: 0
-  });
-
-  const [showCustomCategoryInput, setShowCustomCategoryInput] = useState(false);
-  const [newCategoryName, setNewCategoryName] = useState('');
-
-  // Combinar todas as categorias disponíveis
-  const allAvailableCategories = [...recipeCategories, ...customCategories];
-
-  const handleAddCustomCategory = () => {
-    if (newCategoryName.trim() && !allAvailableCategories.includes(newCategoryName.trim())) {
-      const categoryName = newCategoryName.trim();
-      onAddCustomCategory(categoryName);
-      setFormData({ ...formData, category: categoryName });
-      setNewCategoryName('');
-      setShowCustomCategoryInput(false);
-      toast.success(`Categoria "${categoryName}" criada com sucesso!`);
-    } else if (allAvailableCategories.includes(newCategoryName.trim())) {
-      toast.error('Esta categoria já existe!');
-    }
-  };
-  const calculateTotalCost = () => {
-    return formData.ingredients.reduce((total, ingredient) => 
-      total + ingredient.cost, 0
-    );
-  };
-
-  const handleAddIngredient = () => {
-    if (newIngredient.productId && newIngredient.quantity > 0) {
-      const product = products.find(p => p.id === newIngredient.productId);
-      if (product) {
-        const ingredientCost = (newIngredient.quantity * product.costPrice);
-        setFormData({
-          ...formData,
-          ingredients: [...formData.ingredients, {
-            productId: newIngredient.productId,
-            itemName: product.name,
-            quantity: newIngredient.quantity,
-            unit: product.unit,
-            cost: ingredientCost
-          }]
-        });
-        setNewIngredient({ productId: '', itemName: '', quantity: 0, unit: '', cost: 0 });
-      }
-    }
-  };
-
-  const handleRemoveIngredient = (index: number) => {
-    setFormData({
-      ...formData,
-      ingredients: formData.ingredients.filter((_, i) => i !== index)
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.name || !formData.category || formData.ingredients.length === 0) {
-      toast.error('Preencha todos os campos obrigatórios e adicione pelo menos um ingrediente');
-      return;
-    }
-    
-    const totalCost = calculateTotalCost();
-    const costPerServing = totalCost / formData.servings;
-    
-    onSave({
-      ...formData,
-      totalCost,
-      costPerServing,
-      organizationId: '' // Será preenchido no componente pai
-    });
-  };
-
-  return (
-    <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-      <DialogHeader>
-        <DialogTitle>
-          {recipe ? 'Editar Receita' : 'Nova Receita'}
-        </DialogTitle>
-        <DialogDescription>
-          Crie a ficha técnica com ingredientes e quantidades
-        </DialogDescription>
-      </DialogHeader>
-      
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Nome da Receita *</Label>
-            <Input
-              id="name"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              required
-            />
-          </div>
-          
-          <div className="space-y-2">
-            <Label htmlFor="category">Categoria *</Label>
-            <div className="space-y-2">
-              <Select 
-                value={formData.category} 
-                onValueChange={(value) => {
-                  if (value === 'add-new') {
-                    setShowCustomCategoryInput(true);
-                  } else {
-                    setFormData({ ...formData, category: value });
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione uma categoria" />
-                </SelectTrigger>
-                <SelectContent>
-                  {/* Categorias Predefinidas */}
-                  <SelectItem value="" disabled className="font-semibold text-primary">
-                    📋 Categorias Padrão
-                  </SelectItem>
-                  {recipeCategories.map((category) => (
-                    <SelectItem key={category} value={category}>
-                      {category}
-                    </SelectItem>
-                  ))}
-                  
-                  {/* Categorias Personalizadas */}
-                  {customCategories.length > 0 && (
-                    <>
-                      <SelectItem value="" disabled className="font-semibold text-green-600 mt-2">
-                        ✨ Suas Categorias
-                      </SelectItem>
-                      {customCategories.map((category) => (
-                        <SelectItem key={category} value={category}>
-                          {category}
-                        </SelectItem>
-                      ))}
-                    </>
-                  )}
-                  
-                  {/* Opção para adicionar nova */}
-                  <SelectItem value="add-new" className="font-semibold text-blue-600 mt-2">
-                    <div className="flex items-center gap-2">
-                      <Plus className="w-4 h-4" />
-                      Criar Nova Categoria
-                    </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-              
-              {/* Input para nova categoria */}
-              {showCustomCategoryInput && (
-                <div className="flex gap-2 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                  <Input
-                    placeholder="Nome da nova categoria"
-                    value={newCategoryName}
-                    onChange={(e) => setNewCategoryName(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter') {
-                        handleAddCustomCategory();
-                      }
-                    }}
-                    className="flex-1"
-                  />
-                  <Button 
-                    type="button"
-                    onClick={handleAddCustomCategory}
-                    size="sm"
-                    disabled={!newCategoryName.trim()}
-                  >
-                    <Plus className="w-4 h-4" />
-                  </Button>
-                  <Button 
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setShowCustomCategoryInput(false);
-                      setNewCategoryName('');
-                    }}
-                    size="sm"
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              )}
-              
-              {/* Dica sobre categorias */}
-              <div className="text-xs text-muted-foreground">
-                💡 <strong>Dica:</strong> Categorias ajudam a organizar receitas e gerar relatórios por tipo de produto
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="description">Descrição</Label>
-          <Textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            rows={2}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="servings">Número de Porções *</Label>
-          <Input
-            id="servings"
-            type="number"
-            min="1"
-            value={formData.servings}
-            onChange={(e) => setFormData({ ...formData, servings: parseInt(e.target.value) || 1 })}
-            required
-          />
-        </div>
-
-        {/* Ingredientes - LAYOUT CORRIGIDO */}
-        <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Ingredientes</h3>
-          
-          {/* Adicionar ingrediente - Layout melhorado */}
-          <div className="p-4 border rounded-lg bg-gray-50 space-y-4">
-            {productsLoading ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Carregando produtos...</span>
-              </div>
-            ) : (
-              <>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label>Ingrediente *</Label>
-                    <Select value={newIngredient.productId} onValueChange={(value) => {
-                      const product = products.find(p => p.id === value);
-                      setNewIngredient({ 
-                        ...newIngredient, 
-                        productId: value,
-                        itemName: product?.name || '',
-                        unit: product?.unit || ''
-                      });
-                    }}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o ingrediente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((product) => (
-                          <SelectItem key={product.id} value={product.id}>
-                            {product.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Quantidade *</Label>
-                    <Input
-                      type="number"
-                      placeholder="0"
-                      min="0"
-                      step="0.01"
-                      value={newIngredient.quantity}
-                      onChange={(e) => setNewIngredient({ ...newIngredient, quantity: parseFloat(e.target.value) || 0 })}
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label>Unidade</Label>
-                    <div className="flex items-center px-3 py-2 border rounded-md bg-white">
-                      <span className="text-sm text-muted-foreground">
-                        {newIngredient.unit || 'Selecione um produto'}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end">
-                  <Button 
-                    type="button" 
-                    onClick={handleAddIngredient} 
-                    disabled={!newIngredient.productId || newIngredient.quantity <= 0}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Adicionar
-                  </Button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* Lista de ingredientes - Layout melhorado para evitar sobreposição */}
-          <div className="space-y-2">
-            {formData.ingredients.map((ingredient, index) => (
-              <div key={index} className="p-4 border rounded-lg bg-white">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                  <div className="min-w-0 md:col-span-2 lg:col-span-1">
-                    <div className="text-xs text-muted-foreground mb-1">Produto</div>
-                    <span className="font-medium text-sm block break-words">{ingredient.itemName}</span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs text-muted-foreground mb-1">Quantidade</div>
-                    <span className="text-sm text-muted-foreground">
-                      {ingredient.quantity} {ingredient.unit}
-                    </span>
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-xs text-muted-foreground mb-1">Custo</div>
-                    <span className="text-sm font-medium text-green-600">
-                      R$ {ingredient.cost.toFixed(2)}
-                    </span>
-                  </div>
-                  <div className="flex justify-end items-start">
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => handleRemoveIngredient(index)}
-                      className="mt-4 md:mt-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Resumo de custos */}
-          {formData.ingredients.length > 0 && (
-            <Alert>
-              <Calculator className="w-4 h-4" />
-              <AlertDescription>
-                <div className="flex justify-between items-center">
-                  <span className="font-medium">Custo Total:</span>
-                  <span className="text-lg font-bold text-purple-600">
-                    R$ {calculateTotalCost().toFixed(2)}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center mt-1">
-                  <span className="text-sm text-muted-foreground">Custo por Porção:</span>
-                  <span className="font-medium text-purple-600">
-                    R$ {(calculateTotalCost() / formData.servings).toFixed(2)}
-                  </span>
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-        </div>
-
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={formData.ingredients.length === 0}>
-            {recipe ? 'Salvar Alterações' : 'Criar Receita'}
-          </Button>
-        </div>
-      </form>
-    </DialogContent>
-  );
-}
+};
