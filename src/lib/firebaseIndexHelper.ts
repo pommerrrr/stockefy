@@ -258,28 +258,20 @@ export const useRecipes = () => {
       organizationId: organization?.id || 'demo',
       name: 'Hambúrguer Clássico',
       description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
-      category: 'Lanches',
       ingredients: [
         {
-          productId: '2',
+          productId: '1',
           productName: 'Pão Brioche',
           quantity: 1,
           unit: 'Unidade',
           cost: 1.50
         },
         {
-          productId: '1',
-          productName: 'MILHO CRUNCH',
-          quantity: 0.05,
-          unit: 'Kg',
-          cost: 3.50
-        },
-        {
-          productId: 'mock-3',
+          productId: '2',
           productName: 'Carne Bovina',
           quantity: 0.15,
           unit: 'Kg',
-          cost: 1.20
+          cost: 1.50
         }
       ],
       totalCost: 4.20,
