@@ -242,6 +242,34 @@ export const useRecipes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Mock data para demonstração
+  const mockRecipes: Recipe[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'Hambúrguer Clássico',
+      description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
+      category: 'Lanches',
+      ingredients: [
+        {
+          productId: '1',
+          productName: 'Pão Brioche',
+          quantity: 1,
+          unit: 'Unidade',
+          cost: 1.50
+        },
+        {
+          productId: '2',
+          productName: 'Carne Bovina',
+          quantity: 0.15,
+          unit: 'Kg',
+          cost: 1.50
+        },
+        {
+          productId: '3',
+          productName: 'Queijo',
+          quantity: 0.05,
+          unit: 'Kg',
           cost: 1.20
         }
       ],
@@ -280,25 +308,6 @@ export const useRecipes = () => {
       console.error('Exception loading recipes, using mock data:', err);
       setRecipes(mockRecipes);
       setError('Erro ao carregar receitas. Usando dados de demonstração.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return {
-    recipes,
-    loading,
-    error,
-    refreshRecipes: loadRecipes
-  };
-};
-      } else {
-        console.error('Failed to load recipes:', result.error);
-        setError(result.error || 'Erro ao carregar receitas');
-      }
-    } catch (err) {
-      console.error('Exception loading recipes:', err);
-      setError('Erro inesperado ao carregar receitas');
     } finally {
       setLoading(false);
     }
