@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import { checkFirebaseIndexes } from '@/lib/firebase';
 import { 
   getOrganizationProducts, 
   getStockMovements,
@@ -20,56 +18,17 @@ export const useProducts = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data para demonstração
-  const mockProducts: Product[] = [
-    {
-      id: '1',
-      organizationId: organization?.id || 'demo',
-      name: 'MILHO CRUNCH',
-      category: 'Condimentos',
-      unit: 'Kg',
-      currentStock: 10,
-      minimumStock: 5,
-      costPrice: 70,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    },
-    {
-      id: '2',
-      organizationId: organization?.id || 'demo',
-      name: 'Pão Brioche',
-      category: 'Pães',
-      unit: 'Unidade',
-      currentStock: 50,
-      minimumStock: 20,
-      costPrice: 1.5,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
-
   const loadProducts = async () => {
     if (!organization?.id) return;
-    
-    // Verificar índices antes de fazer consultas
-    const indexesOK = await checkFirebaseIndexes(organization.id);
-    if (!indexesOK) {
-      setLoading(false);
-      return; // Para aqui se índices estão faltando
-    }
     
     console.log('Loading products for organization:', organization.id);
     setLoading(true);
     try {
-      // Verificar se Firebase está configurado
-      if (!organization.id.startsWith('demo')) {
-        const result = await getOrganizationProducts(organization.id);
-        if (result.success && result.products) {
-          setProducts(result.products);
-        } else {
-          console.error('Failed to load products:', result.error);
-          setError(result.error || 'Erro ao carregar produtos');
-        }
+      const result = await getOrganizationProducts(organization.id);
+      console.log('Products loaded:', result);
+      
+      if (result.success && result.products) {
+        setProducts(result.products);
       } else {
         console.error('Failed to load products:', result.error);
         setError(result.error || 'Erro ao carregar produtos');
@@ -131,13 +90,6 @@ export const useStockMovements = () => {
 
   const loadMovements = async () => {
     if (!organization?.id) return;
-    
-    // Verificar índices antes de fazer consultas
-    const indexesOK = await checkFirebaseIndexes(organization.id);
-    if (!indexesOK) {
-      setLoading(false);
-      return; // Para aqui se índices estão faltando
-    }
     
     console.log('Loading movements for organization:', organization.id);
     setLoading(true);
@@ -248,55 +200,24 @@ export const useRecipes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const mockRecipes = [
-    {
-      id: '1',
-      organizationId: organization?.id || 'demo',
-      name: 'Hambúrguer Clássico',
-      ingredients: [
-        {
-          productId: '1',
-          name: 'Pão Brioche',
-          quantity: 1,
-          unit: 'Unidade',
-          cost: 1.20
-        }
-      ],
-      totalCost: 4.20,
-      servings: 1,
-      costPerServing: 4.20,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
-
   const loadRecipes = async () => {
     if (!organization?.id) return;
     
     console.log('Loading recipes for organization:', organization.id);
     setLoading(true);
     try {
-      // Verificar se Firebase está configurado corretamente
-      try {
-        // Tentar carregar do Firebase
-        const result = await getOrganizationRecipes(organization.id);
-        console.log('Recipes loaded:', result);
-        
-        if (result.success && result.recipes) {
-          setRecipes(result.recipes);
-        } else {
-          console.warn('Failed to load recipes from Firebase, using mock data:', result.error);
-          setRecipes(mockRecipes);
-        }
-      } catch (firebaseError) {
-        // Se falhar, usar dados mock
-        console.warn('Error loading recipes from Firebase, using mock data:', firebaseError);
-        setRecipes(mockRecipes);
+      const result = await getOrganizationRecipes(organization.id);
+      console.log('Recipes loaded:', result);
+      
+      if (result.success && result.recipes) {
+        setRecipes(result.recipes);
+      } else {
+        console.error('Failed to load recipes:', result.error);
+        setError(result.error || 'Erro ao carregar receitas');
       }
     } catch (err) {
-      console.error('Exception loading recipes, using mock data:', err);
-      setRecipes(mockRecipes);
-      setError('Erro ao carregar receitas. Usando dados de demonstração.');
+      console.error('Exception loading recipes:', err);
+      setError('Erro inesperado ao carregar receitas');
     } finally {
       setLoading(false);
     }
@@ -321,50 +242,24 @@ export const useSuppliers = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data para demonstração
-  const mockSuppliers: Supplier[] = [
-    {
-      id: '1',
-      organizationId: organization?.id || 'demo',
-      name: 'Fornecedor Demo',
-      cnpj: '12.345.678/0001-90',
-      phone: '(11) 99999-9999',
-      email: 'contato@fornecedor.com',
-      address: 'Rua Demo, 123 - São Paulo, SP',
-      products: ['Pão', 'Carne', 'Queijo'],
-      status: 'active' as const,
-      notes: 'Fornecedor de demonstração',
-      lastOrder: '2025-01-01',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
-
   const loadSuppliers = async () => {
     if (!organization?.id) return;
     
     console.log('Loading suppliers for organization:', organization.id);
     setLoading(true);
     try {
-      // Verificar se Firebase está configurado
-      if (!organization.id.startsWith('demo')) {
-        const result = await getOrganizationSuppliers(organization.id);
-        console.log('Suppliers loaded:', result);
-        
-        if (result.success && result.suppliers) {
-          setSuppliers(result.suppliers);
-        } else {
-          console.error('Failed to load suppliers, using mock data:', result.error);
-          setSuppliers(mockSuppliers);
-        }
+      const result = await getOrganizationSuppliers(organization.id);
+      console.log('Suppliers loaded:', result);
+      
+      if (result.success && result.suppliers) {
+        setSuppliers(result.suppliers);
       } else {
-        // Usar dados mock para demonstração
-        console.log('Using mock suppliers for demo');
-        setSuppliers(mockSuppliers);
+        console.error('Failed to load suppliers:', result.error);
+        setError(result.error || 'Erro ao carregar fornecedores');
       }
     } catch (err) {
-      console.error('Exception loading suppliers, using mock data:', err);
-      setSuppliers(mockSuppliers);
+      console.error('Exception loading suppliers:', err);
+      setError('Erro inesperado ao carregar fornecedores');
     } finally {
       setLoading(false);
     }
