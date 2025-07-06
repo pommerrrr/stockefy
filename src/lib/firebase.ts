@@ -1,395 +1,444 @@
-import React, { useState, useEffect } from 'react';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
-import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
+// Firebase configuration and database operations
+import { initializeApp } from 'firebase/app';
 import { 
-  getOrganizationProducts, 
-  getStockMovements,
-  getOrganizationRecipes,
-  getOrganizationSuppliers,
-  createProduct,
-  createStockMovement,
-  updateProductStock
-} from '@/lib/firebase';
-import type { Product, StockMovement, Recipe, Supplier } from '@/lib/firebase';
+  getFirestore, 
+  collection, 
+  addDoc, 
+  getDocs, 
+  query, 
+  where, 
+  orderBy, 
+  updateDoc, 
+  doc, 
+  serverTimestamp,
+  Timestamp 
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  User as FirebaseUser 
+} from 'firebase/auth';
 
-// Hook para gerenciar produtos
-export const useProducts = () => {
-  const { organization } = useAuth();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+};
 
-  // Mock data para demonstração
-  const mockProducts: Product[] = [
-    {
-      id: '1',
-      organizationId: organization?.id || 'demo',
-      name: 'MILHO CRUNCH',
-      category: 'Condimentos',
-      unit: 'Kg',
-      currentStock: 10,
-      minimumStock: 5,
-      costPrice: 70,
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+export const db = getFirestore(app);
+export const auth = getAuth(app);
+
+// Types
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  organizationId: string;
+  role: 'admin' | 'user';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  cnpj?: string;
+  address?: string;
+  phone?: string;
+  email?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Product {
+  id: string;
+  organizationId: string;
+  name: string;
+  category: string;
+  unit: string;
+  currentStock: number;
+  minimumStock: number;
+  costPrice: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StockMovement {
+  id: string;
+  organizationId: string;
+  productId: string;
+  productName: string;
+  type: 'entry' | 'exit';
+  quantity: number;
+  unitPrice?: number;
+  totalValue?: number;
+  reason: string;
+  userId: string;
+  userName: string;
+  createdAt: Date;
+}
+
+export interface Recipe {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  category?: string;
+  ingredients: RecipeIngredient[];
+  totalCost: number;
+  servings: number;
+  costPerServing: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface RecipeIngredient {
+  productId: string;
+  productName: string;
+  quantity: number;
+  unit: string;
+  cost: number;
+}
+
+export interface Supplier {
+  id: string;
+  organizationId: string;
+  name: string;
+  cnpj?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  products: string[];
+  status: 'active' | 'inactive';
+  notes?: string;
+  lastOrder?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// Helper function to convert Firestore timestamps
+const convertTimestamp = (timestamp: any): Date => {
+  if (timestamp && timestamp.toDate) {
+    return timestamp.toDate();
+  }
+  if (timestamp instanceof Date) {
+    return timestamp;
+  }
+  return new Date();
+};
+
+// Check Firebase indexes
+export const checkFirebaseIndexes = async (organizationId: string): Promise<boolean> => {
+  try {
+    console.log('Checking Firebase indexes for organization:', organizationId);
+    
+    // Test basic queries that require indexes
+    const productsQuery = query(
+      collection(db, 'products'),
+      where('organizationId', '==', organizationId),
+      orderBy('name')
+    );
+    
+    const movementsQuery = query(
+      collection(db, 'stockMovements'),
+      where('organizationId', '==', organizationId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    // Try to execute the queries
+    await getDocs(productsQuery);
+    await getDocs(movementsQuery);
+    
+    console.log('Firebase indexes are working correctly');
+    return true;
+  } catch (error: any) {
+    console.error('Firebase index error:', error);
+    
+    if (error.code === 'failed-precondition' && error.message.includes('index')) {
+      console.error('Missing Firebase indexes. Please check the Firebase console.');
+      return false;
+    }
+    
+    // For other errors, assume indexes are OK
+    return true;
+  }
+};
+
+// Authentication functions
+export const signUp = async (email: string, password: string, userData: Partial<User>) => {
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+    
+    // Create user document
+    const userDoc = {
+      email: user.email,
+      name: userData.name || '',
+      organizationId: userData.organizationId || '',
+      role: userData.role || 'user',
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    await addDoc(collection(db, 'users'), userDoc);
+    
+    return { success: true, user };
+  } catch (error: any) {
+    console.error('Sign up error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const signIn = async (email: string, password: string) => {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return { success: true, user: userCredential.user };
+  } catch (error: any) {
+    console.error('Sign in error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const signOut = async () => {
+  try {
+    await firebaseSignOut(auth);
+    return { success: true };
+  } catch (error: any) {
+    console.error('Sign out error:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Product functions
+export const createProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+  try {
+    console.log('Creating product:', productData);
+    
+    const docData = {
+      ...productData,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+    
+    const docRef = await addDoc(collection(db, 'products'), docData);
+    console.log('Product created with ID:', docRef.id);
+    
+    const product: Product = {
+      ...productData,
+      id: docRef.id,
       createdAt: new Date(),
       updatedAt: new Date()
-    },
-    {
-      id: '2',
-      organizationId: organization?.id || 'demo',
-      name: 'Pão Brioche',
-      category: 'Pães',
-      unit: 'Unidade',
-      currentStock: 50,
-      minimumStock: 20,
-      costPrice: 1.5,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
-
-  const loadProducts = async () => {
-    if (!organization?.id) return;
+    };
     
-    // Verificar índices antes de fazer consultas
-    const indexesOK = await checkFirebaseIndexes(organization.id);
-    if (!indexesOK) {
-      setLoading(false);
-      return; // Para aqui se índices estão faltando
-    }
+    return { success: true, product };
+  } catch (error: any) {
+    console.error('Error creating product:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+export const getOrganizationProducts = async (organizationId: string) => {
+  try {
+    console.log('Fetching products for organization:', organizationId);
     
-    console.log('Loading products for organization:', organization.id);
-    setLoading(true);
-    try {
-      // Verificar se Firebase está configurado
-      if (!organization.id.startsWith('demo')) {
-        const result = await getOrganizationProducts(organization.id);
-        console.log('Products loaded:', result);
-        
-        if (result.success && result.products) {
-          setProducts(result.products);
-        } else {
-          console.error('Failed to load products, using mock data:', result.error);
-          setProducts(mockProducts);
-        }
-      } else {
-        // Usar dados mock para demonstração
-        console.log('Using mock products for demo');
-        setProducts(mockProducts);
-      }
-    } catch (err) {
-      console.error('Exception loading products, using mock data:', err);
-      setProducts(mockProducts);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
-    if (!organization?.id) return { success: false, error: 'Organização não encontrada' };
-
-    console.log('Adding product with organization ID:', organization.id);
-    console.log('Product data:', productData);
-
-    try {
-      const result = await createProduct({
-        ...productData,
-        organizationId: organization.id
+    const q = query(
+      collection(db, 'products'),
+      where('organizationId', '==', organizationId),
+      orderBy('name')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const products: Product[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      products.push({
+        id: doc.id,
+        organizationId: data.organizationId,
+        name: data.name,
+        category: data.category,
+        unit: data.unit,
+        currentStock: data.currentStock,
+        minimumStock: data.minimumStock,
+        costPrice: data.costPrice,
+        createdAt: convertTimestamp(data.createdAt),
+        updatedAt: convertTimestamp(data.updatedAt)
       });
-      
-      console.log('Create product result:', result);
-      
-      if (result.success && result.product) {
-        setProducts(prev => [...prev, result.product!]);
-        return { success: true, product: result.product };
-      } else {
-        console.error('Failed to create product:', result.error);
-        return { success: false, error: result.error || 'Erro ao criar produto' };
-      }
-    } catch (err) {
-      console.error('Exception creating product:', err);
-      return { success: false, error: 'Erro ao criar produto' };
-    }
-  };
-
-  useEffect(() => {
-    loadProducts();
-  }, [organization?.id]);
-
-  return {
-    products,
-    loading,
-    error,
-    addProduct,
-    refreshProducts: loadProducts
-  };
+    });
+    
+    console.log('Products fetched:', products.length);
+    return { success: true, products };
+  } catch (error: any) {
+    console.error('Error fetching products:', error);
+    return { success: false, error: error.message };
+  }
 };
 
-// Hook para gerenciar movimentações de estoque
-export const useStockMovements = () => {
-  const { organization, user } = useAuth();
-  const [movements, setMovements] = useState<StockMovement[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const loadMovements = async () => {
-    if (!organization?.id) return;
+export const updateProductStock = async (productId: string, newStock: number) => {
+  try {
+    const productRef = doc(db, 'products', productId);
+    await updateDoc(productRef, {
+      currentStock: newStock,
+      updatedAt: serverTimestamp()
+    });
     
-    // Verificar índices antes de fazer consultas
-    const indexesOK = await checkFirebaseIndexes(organization.id);
-    if (!indexesOK) {
-      setLoading(false);
-      return; // Para aqui se índices estão faltando
-    }
+    return { success: true };
+  } catch (error: any) {
+    console.error('Error updating product stock:', error);
+    return { success: false, error: error.message };
+  }
+};
+
+// Stock movement functions
+export const createStockMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
+  try {
+    console.log('Creating stock movement:', movementData);
     
-    console.log('Loading movements for organization:', organization.id);
-    setLoading(true);
-    try {
-      const result = await getStockMovements(organization.id);
-      console.log('Movements loaded:', result);
-      
-      if (result.success && result.movements) {
-        setMovements(result.movements);
-      } else {
-        console.error('Failed to load movements:', result.error);
-        setError(result.error || 'Erro ao carregar movimentações');
-      }
-    } catch (err) {
-      console.error('Exception loading movements:', err);
-      setError('Erro inesperado ao carregar movimentações');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const addMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
-    if (!organization?.id || !user?.id) return { success: false, error: 'Dados de autenticação não encontrados' };
-
-    console.log('Adding movement with data:', movementData);
+    const docData = {
+      ...movementData,
+      createdAt: serverTimestamp()
+    };
     
-    // Validação para garantir que productId está definido
-    if (!movementData.productId) {
-      console.error('Erro: productId não definido', movementData);
-      return { success: false, error: 'ID do produto não definido' };
-    }
+    const docRef = await addDoc(collection(db, 'stockMovements'), docData);
+    console.log('Stock movement created with ID:', docRef.id);
+    
+    const movement: StockMovement = {
+      ...movementData,
+      id: docRef.id,
+      createdAt: new Date()
+    };
+    
+    return { success: true, movement };
+  } catch (error: any) {
+    console.error('Error creating stock movement:', error);
+    return { success: false, error: error.message };
+  }
+};
 
-    try {
-      const result = await createStockMovement({
-        ...movementData,
-        organizationId: organization.id,
-        userId: user.id
+export const getStockMovements = async (organizationId: string) => {
+  try {
+    console.log('Fetching stock movements for organization:', organizationId);
+    
+    const q = query(
+      collection(db, 'stockMovements'),
+      where('organizationId', '==', organizationId),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const movements: StockMovement[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      movements.push({
+        id: doc.id,
+        organizationId: data.organizationId,
+        productId: data.productId,
+        productName: data.productName,
+        type: data.type,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice,
+        totalValue: data.totalValue,
+        reason: data.reason,
+        userId: data.userId,
+        userName: data.userName,
+        createdAt: convertTimestamp(data.createdAt)
       });
-      
-      if (result.success && result.movement) {
-        setMovements(prev => [result.movement!, ...prev]);
-        
-        // A atualização do produto é feita automaticamente no Firebase
-        
-        return { success: true };
-      } else {
-        console.error('Failed to create movement:', result.error);
-        return { success: false, error: result.error };
-      }
-    } catch (err) {
-      console.error('Erro ao criar movimentação:', err);
-      return { success: false, error: 'Erro ao criar movimentação' };
-    }
-  };
-
-  useEffect(() => {
-    loadMovements();
-  }, [organization?.id]);
-
-  return {
-    movements,
-    loading,
-    error,
-    addMovement,
-    refreshMovements: loadMovements
-  };
+    });
+    
+    console.log('Stock movements fetched:', movements.length);
+    return { success: true, movements };
+  } catch (error: any) {
+    console.error('Error fetching stock movements:', error);
+    return { success: false, error: error.message };
+  }
 };
 
-// Hook para estatísticas do dashboard
-export const useDashboardStats = () => {
-  const { products, loading: productsLoading } = useProducts();
-  const { movements, loading: movementsLoading } = useStockMovements();
-  const [stats, setStats] = useState({
-    totalItems: 0,
-    lowStockItems: 0,
-    totalValue: 0,
-    recentMovements: [] as any[],
-    lowStockAlerts: [] as any[]
-  });
-  
-  // Atualizar estatísticas quando os dados mudarem
-  React.useEffect(() => {
-    if (!productsLoading && !movementsLoading) {
-      setStats({
-        totalItems: products.length,
-        lowStockItems: products.filter(p => p.currentStock <= p.minimumStock).length,
-        totalValue: products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0),
-        recentMovements: movements.slice(0, 5),
-        lowStockAlerts: products
-          .filter(p => p.currentStock <= p.minimumStock)
-          .map(p => ({
-            item: p.name,
-            current: p.currentStock,
-            minimum: p.minimumStock,
-            unit: p.unit
-          }))
+// Recipe functions
+export const getOrganizationRecipes = async (organizationId: string) => {
+  try {
+    console.log('Fetching recipes for organization:', organizationId);
+    
+    const q = query(
+      collection(db, 'recipes'),
+      where('organizationId', '==', organizationId),
+      orderBy('name')
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const recipes: Recipe[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      recipes.push({
+        id: doc.id,
+        organizationId: data.organizationId,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        ingredients: data.ingredients || [],
+        totalCost: data.totalCost,
+        servings: data.servings,
+        costPerServing: data.costPerServing,
+        createdAt: convertTimestamp(data.createdAt),
+        updatedAt: convertTimestamp(data.updatedAt)
       });
-    }
-  }, [products, movements, productsLoading, movementsLoading]);
-
-  return { ...stats, loading: productsLoading || movementsLoading };
+    });
+    
+    console.log('Recipes fetched:', recipes.length);
+    return { success: true, recipes };
+  } catch (error: any) {
+    console.error('Error fetching recipes:', error);
+    return { success: false, error: error.message };
+  }
 };
 
-// Hook para gerenciar receitas
-export const useRecipes = () => {
-  const { organization } = useAuth();
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Mock data para demonstração
-  const mockRecipes: Recipe[] = [
-    {
-      id: '1',
-      organizationId: organization?.id || 'demo',
-      name: 'Hambúrguer Clássico',
-      description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
-      category: 'Sanduíches',
-      ingredients: [
-        {
-          productId: '1',
-          productName: 'Pão Brioche',
-          quantity: 1,
-          unit: 'Unidade',
-          cost: 1.50
-        },
-        {
-          productId: '2',
-          productName: 'Carne Bovina',
-          quantity: 0.15,
-          unit: 'Kg',
-          cost: 1.50
-        }
-      ],
-      totalCost: 4.20,
-      servings: 1,
-      costPerServing: 4.20,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
-
-  const loadRecipes = async () => {
-    if (!organization?.id) return;
+// Supplier functions
+export const getOrganizationSuppliers = async (organizationId: string) => {
+  try {
+    console.log('Fetching suppliers for organization:', organizationId);
     
-    console.log('Loading recipes for organization:', organization.id);
-    setLoading(true);
-    try {
-      // Verificar se Firebase está configurado corretamente
-      try {
-        // Tentar carregar do Firebase
-        const result = await getOrganizationRecipes(organization.id);
-        console.log('Recipes loaded:', result);
-        
-        if (result.success && result.recipes) {
-          setRecipes(result.recipes);
-        } else {
-          console.warn('Failed to load recipes from Firebase, using mock data:', result.error);
-          setRecipes(mockRecipes);
-        }
-      } catch (firebaseError) {
-        // Se falhar, usar dados mock
-        console.warn('Error loading recipes from Firebase, using mock data:', firebaseError);
-        setRecipes(mockRecipes);
-      }
-    } catch (err) {
-      console.error('Exception loading recipes, using mock data:', err);
-      setRecipes(mockRecipes);
-      setError('Erro ao carregar receitas. Usando dados de demonstração.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadRecipes();
-  }, [organization?.id]);
-
-  return {
-    recipes,
-    loading,
-    error,
-    refreshRecipes: loadRecipes
-  };
-};
-
-// Hook para gerenciar fornecedores
-export const useSuppliers = () => {
-  const { organization } = useAuth();
-  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  // Mock data para demonstração
-  const mockSuppliers: Supplier[] = [
-    {
-      id: '1',
-      organizationId: organization?.id || 'demo',
-      name: 'Fornecedor Demo',
-      cnpj: '12.345.678/0001-90',
-      phone: '(11) 99999-9999',
-      email: 'contato@fornecedor.com',
-      address: 'Rua Demo, 123 - São Paulo, SP',
-      products: ['Pão', 'Carne', 'Queijo'],
-      status: 'active' as const,
-      notes: 'Fornecedor de demonstração',
-      lastOrder: '2025-01-01',
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
-  ];
-  const loadSuppliers = async () => {
-    if (!organization?.id) return;
+    const q = query(
+      collection(db, 'suppliers'),
+      where('organizationId', '==', organizationId),
+      orderBy('name')
+    );
     
-    console.log('Loading suppliers for organization:', organization.id);
-    setLoading(true);
-    try {
-      // Verificar se Firebase está configurado
-      if (!organization.id.startsWith('demo')) {
-        const result = await getOrganizationSuppliers(organization.id);
-        console.log('Suppliers loaded:', result);
-        
-        if (result.success && result.suppliers) {
-          setSuppliers(result.suppliers);
-        } else {
-          console.error('Failed to load suppliers, using mock data:', result.error);
-          setSuppliers(mockSuppliers);
-        }
-      } else {
-        // Usar dados mock para demonstração
-        console.log('Using mock suppliers for demo');
-        setSuppliers(mockSuppliers);
-      }
-    } catch (err) {
-      console.error('Exception loading suppliers, using mock data:', err);
-      setSuppliers(mockSuppliers);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    loadSuppliers();
-  }, [organization?.id]);
-
-  return {
-    suppliers,
-    loading,
-    error,
-    refreshSuppliers: loadSuppliers
-  };
+    const querySnapshot = await getDocs(q);
+    const suppliers: Supplier[] = [];
+    
+    querySnapshot.forEach((doc) => {
+      const data = doc.data();
+      suppliers.push({
+        id: doc.id,
+        organizationId: data.organizationId,
+        name: data.name,
+        cnpj: data.cnpj,
+        phone: data.phone,
+        email: data.email,
+        address: data.address,
+        products: data.products || [],
+        status: data.status,
+        notes: data.notes,
+        lastOrder: data.lastOrder,
+        createdAt: convertTimestamp(data.createdAt),
+        updatedAt: convertTimestamp(data.updatedAt)
+      });
+    });
+    
+    console.log('Suppliers fetched:', suppliers.length);
+    return { success: true, suppliers };
+  } catch (error: any) {
+    console.error('Error fetching suppliers:', error);
+    return { success: false, error: error.message };
+  }
 };
