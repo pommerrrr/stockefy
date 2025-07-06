@@ -64,6 +64,12 @@ export const useProducts = () => {
       // Verificar se Firebase está configurado
       if (!organization.id.startsWith('demo')) {
         const result = await getOrganizationProducts(organization.id);
+        if (result.success && result.products) {
+          setProducts(result.products);
+        } else {
+          console.error('Failed to load products:', result.error);
+          setError(result.error || 'Erro ao carregar produtos');
+        }
       } else {
         console.error('Failed to load products:', result.error);
         setError(result.error || 'Erro ao carregar produtos');
@@ -242,34 +248,17 @@ export const useRecipes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data para demonstração
-  const mockRecipes: Recipe[] = [
+  const mockRecipes = [
     {
       id: '1',
       organizationId: organization?.id || 'demo',
       name: 'Hambúrguer Clássico',
-      description: 'Hambúrguer tradicional com queijo e salada',
-      category: 'Sanduíches',
       ingredients: [
         {
           productId: '1',
-          itemName: 'Pão Brioche',
+          name: 'Pão Brioche',
           quantity: 1,
           unit: 'Unidade',
-          cost: 1.50
-        },
-        {
-          productId: '2',
-          itemName: 'Hambúrguer',
-          quantity: 180,
-          unit: 'g',
-          cost: 1.50
-        },
-        {
-          productId: '3',
-          itemName: 'Queijo Cheddar',
-          quantity: 1,
-          unit: 'Fatia',
           cost: 1.20
         }
       ],
@@ -350,6 +339,7 @@ export const useSuppliers = () => {
       updatedAt: new Date()
     }
   ];
+
   const loadSuppliers = async () => {
     if (!organization?.id) return;
     
