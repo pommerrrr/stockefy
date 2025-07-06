@@ -1,199 +1,402 @@
-// Helper para detectar e orientar criação de índices do Firebase
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from './firebase';
+import React, { useState, useEffect } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
+import { 
+  getOrganizationProducts, 
+  getStockMovements,
+  getOrganizationRecipes,
+  getOrganizationSuppliers,
+  createProduct,
+  createStockMovement,
+  updateProductStock
+} from '@/lib/firebase';
+import type { Product, StockMovement, Recipe, Supplier } from '@/lib/firebase';
 
-interface IndexError {
-  collection: string;
-  fields: string[];
-  url: string;
-  description: string;
-}
+// Hook para gerenciar produtos
+export const useProducts = () => {
+  const { organization } = useAuth();
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export class FirebaseIndexHelper {
-  private static indexErrors: IndexError[] = [];
-  private static hasChecked = false;
-
-  // URLs diretas para criar os índices necessários
-  private static readonly REQUIRED_INDEXES = [
+  // Mock data para demonstração
+  const mockProducts: Product[] = [
     {
-      collection: 'products',
-      fields: ['organizationId', 'name'],
-      url: 'https://console.firebase.google.com/v1/r/project/stockely-5de11/firestore/indexes?create_composite=Ck9wcm9qZWN0cy9zdG9ja2VseS01ZGUxMS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvcHJvZHVjdHMvaW5kZXhlcy9fEAEaEgoOb3JnYW5pemF0aW9uSWQQARoICgRuYW1lEAEaDAoIX19uYW1lX18QAQ',
-      description: 'Índice para buscar produtos por organização e ordenar por nome'
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'MILHO CRUNCH',
+      category: 'Condimentos',
+      unit: 'Kg',
+      currentStock: 10,
+      minimumStock: 5,
+      costPrice: 70,
+      createdAt: new Date(),
+      updatedAt: new Date()
     },
     {
-      collection: 'stockMovements',
-      fields: ['organizationId', 'createdAt'],
-      url: 'https://console.firebase.google.com/v1/r/project/stockely-5de11/firestore/indexes?create_composite=ClVwcm9qZWN0cy9zdG9ja2VseS01ZGUxMS9kYXRhYmFzZXMvKGRlZmF1bHQpL2NvbGxlY3Rpb25Hcm91cHMvc3RvY2tNb3ZlbWVudHMvaW5kZXhlcy9fEAEaEgoOb3JnYW5pemF0aW9uSWQQARoNCgljcmVhdGVkQXQQAhoMCghfX25hbWVfXhAC',
-      description: 'Índice para buscar movimentações por organização e ordenar por data'
+      id: '2',
+      organizationId: organization?.id || 'demo',
+      name: 'Pão Brioche',
+      category: 'Pães',
+      unit: 'Unidade',
+      currentStock: 50,
+      minimumStock: 20,
+      costPrice: 1.5,
+      createdAt: new Date(),
+      updatedAt: new Date()
     }
   ];
 
-  // Detecta automaticamente quais índices estão faltando
-  static async checkRequiredIndexes(organizationId: string): Promise<IndexError[]> {
-    if (this.hasChecked) return this.indexErrors;
-
-    console.log('🔍 Verificando índices necessários do Firebase...');
-    this.indexErrors = [];
-
-    // Testa índice de produtos
+  const loadProducts = async () => {
+    if (!organization?.id) return;
+    
+    // Verificar índices antes de fazer consultas
+    const indexesOK = await checkFirebaseIndexes(organization.id);
+    if (!indexesOK) {
+      setLoading(false);
+      return; // Para aqui se índices estão faltando
+    }
+    
+    console.log('Loading products for organization:', organization.id);
+    setLoading(true);
     try {
-      const productsQuery = query(
-        collection(db, 'products'),
-        where('organizationId', '==', organizationId),
-        orderBy('name'),
-        limit(1)
-      );
-      await getDocs(productsQuery);
-      console.log('✅ Índice de produtos: OK');
-    } catch (error: any) {
-      if (error.code === 'failed-precondition') {
-        console.log('❌ Índice de produtos: FALTANDO');
-        this.indexErrors.push(this.REQUIRED_INDEXES[0]);
+      // Verificar se Firebase está configurado
+      if (!organization.id.startsWith('demo')) {
+        const result = await getOrganizationProducts(organization.id);
+        console.log('Products loaded:', result);
+        
+        if (result.success && result.products) {
+          setProducts(result.products);
+        } else {
+          console.error('Failed to load products, using mock data:', result.error);
+          setProducts(mockProducts);
+        }
+      } else {
+        // Usar dados mock para demonstração
+        console.log('Using mock products for demo');
+        setProducts(mockProducts);
       }
+    } catch (err) {
+      console.error('Exception loading products, using mock data:', err);
+      setProducts(mockProducts);
+    } finally {
+      setLoading(false);
     }
+  };
 
-    // Testa índice de movimentações
+  const addProduct = async (productData: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>) => {
+    if (!organization?.id) return { success: false, error: 'Organização não encontrada' };
+
+    console.log('Adding product with organization ID:', organization.id);
+    console.log('Product data:', productData);
+
     try {
-      const movementsQuery = query(
-        collection(db, 'stockMovements'),
-        where('organizationId', '==', organizationId),
-        orderBy('createdAt', 'desc'),
-        limit(1)
-      );
-      await getDocs(movementsQuery);
-      console.log('✅ Índice de movimentações: OK');
-    } catch (error: any) {
-      if (error.code === 'failed-precondition') {
-        console.log('❌ Índice de movimentações: FALTANDO');
-        this.indexErrors.push(this.REQUIRED_INDEXES[1]);
+      const result = await createProduct({
+        ...productData,
+        organizationId: organization.id
+      });
+      
+      console.log('Create product result:', result);
+      
+      if (result.success && result.product) {
+        setProducts(prev => [...prev, result.product!]);
+        return { success: true, product: result.product };
+      } else {
+        console.error('Failed to create product:', result.error);
+        return { success: false, error: result.error || 'Erro ao criar produto' };
       }
+    } catch (err) {
+      console.error('Exception creating product:', err);
+      return { success: false, error: 'Erro ao criar produto' };
+    }
+  };
+
+  useEffect(() => {
+    loadProducts();
+  }, [organization?.id]);
+
+  return {
+    products,
+    loading,
+    error,
+    addProduct,
+    refreshProducts: loadProducts
+  };
+};
+
+// Hook para gerenciar movimentações de estoque
+export const useStockMovements = () => {
+  const { organization, user } = useAuth();
+  const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadMovements = async () => {
+    if (!organization?.id) return;
+    
+    // Verificar índices antes de fazer consultas
+    const indexesOK = await checkFirebaseIndexes(organization.id);
+    if (!indexesOK) {
+      setLoading(false);
+      return; // Para aqui se índices estão faltando
+    }
+    
+    console.log('Loading movements for organization:', organization.id);
+    setLoading(true);
+    try {
+      const result = await getStockMovements(organization.id);
+      console.log('Movements loaded:', result);
+      
+      if (result.success && result.movements) {
+        setMovements(result.movements);
+      } else {
+        console.error('Failed to load movements:', result.error);
+        setError(result.error || 'Erro ao carregar movimentações');
+      }
+    } catch (err) {
+      console.error('Exception loading movements:', err);
+      setError('Erro inesperado ao carregar movimentações');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const addMovement = async (movementData: Omit<StockMovement, 'id' | 'createdAt'>) => {
+    if (!organization?.id || !user?.id) return { success: false, error: 'Dados de autenticação não encontrados' };
+
+    console.log('Adding movement with data:', movementData);
+    
+    // Validação para garantir que productId está definido
+    if (!movementData.productId) {
+      console.error('Erro: productId não definido', movementData);
+      return { success: false, error: 'ID do produto não definido' };
     }
 
-    this.hasChecked = true;
-    return this.indexErrors;
-  }
-
-  // Mostra instruções claras para o usuário
-  static showIndexInstructions(errors: IndexError[]) {
-    if (errors.length === 0) {
-      console.log('🎉 Todos os índices estão configurados!');
-      return;
+    try {
+      const result = await createStockMovement({
+        ...movementData,
+        organizationId: organization.id,
+        userId: user.id
+      });
+      
+      if (result.success && result.movement) {
+        setMovements(prev => [result.movement!, ...prev]);
+        
+        // A atualização do produto é feita automaticamente no Firebase
+        
+        return { success: true };
+      } else {
+        console.error('Failed to create movement:', result.error);
+        return { success: false, error: result.error };
+      }
+    } catch (err) {
+      console.error('Erro ao criar movimentação:', err);
+      return { success: false, error: 'Erro ao criar movimentação' };
     }
+  };
 
-    console.log('🚨 AÇÃO NECESSÁRIA: Índices do Firebase faltando');
-    console.log('');
-    console.log('Para corrigir, siga estes passos:');
-    console.log('');
+  useEffect(() => {
+    loadMovements();
+  }, [organization?.id]);
 
-    errors.forEach((error, index) => {
-      console.log(`${index + 1}. ${error.description}`);
-      console.log(`   Coleção: ${error.collection}`);
-      console.log(`   Campos: ${error.fields.join(', ')}`);
-      console.log(`   🔗 Clique aqui para criar: ${error.url}`);
-      console.log('');
-    });
+  return {
+    movements,
+    loading,
+    error,
+    addMovement,
+    refreshMovements: loadMovements
+  };
+};
 
-    console.log('⏱️ Após criar os índices, aguarde 5-10 minutos e recarregue a página.');
-    console.log('');
-
-    // Mostra alerta visual para o usuário
-    this.showUserAlert(errors);
-  }
-
-  // Mostra alerta visual na interface
-  private static showUserAlert(errors: IndexError[]) {
-    // Cria um modal de alerta
-    const alertDiv = document.createElement('div');
-    alertDiv.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: rgba(0,0,0,0.8);
-      z-index: 10000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: system-ui, -apple-system, sans-serif;
-    `;
-
-    const modalDiv = document.createElement('div');
-    modalDiv.style.cssText = `
-      background: white;
-      padding: 30px;
-      border-radius: 12px;
-      max-width: 600px;
-      max-height: 80vh;
-      overflow-y: auto;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    `;
-
-    modalDiv.innerHTML = `
-      <h2 style="color: #dc2626; margin: 0 0 20px 0; font-size: 24px;">
-        🚨 Configuração do Firebase Necessária
-      </h2>
-      <p style="margin: 0 0 20px 0; color: #374151; line-height: 1.6;">
-        O sistema precisa de índices no Firebase para funcionar. Clique nos links abaixo para criá-los:
-      </p>
-      ${errors.map((error, index) => `
-        <div style="margin: 15px 0; padding: 15px; background: #f3f4f6; border-radius: 8px;">
-          <h3 style="margin: 0 0 10px 0; color: #1f2937; font-size: 16px;">
-            ${index + 1}. ${error.description}
-          </h3>
-          <p style="margin: 0 0 10px 0; color: #6b7280; font-size: 14px;">
-            Coleção: <code>${error.collection}</code> | Campos: <code>${error.fields.join(', ')}</code>
-          </p>
-          <a href="${error.url}" target="_blank" style="
-            display: inline-block;
-            background: #ea580c;
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-weight: 500;
-            font-size: 14px;
-          ">
-            🔗 Criar Índice
-          </a>
-        </div>
-      `).join('')}
-      <div style="margin: 20px 0 0 0; padding: 15px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
-        <p style="margin: 0; color: #92400e; font-size: 14px;">
-          ⏱️ <strong>Importante:</strong> Após criar os índices, aguarde 5-10 minutos e recarregue a página.
-        </p>
-      </div>
-      <button onclick="this.parentElement.parentElement.remove()" style="
-        margin: 20px 0 0 0;
-        background: #6b7280;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 6px;
-        cursor: pointer;
-        font-size: 14px;
-      ">
-        Fechar (Criarei os índices agora)
-      </button>
-    `;
-
-    alertDiv.appendChild(modalDiv);
-    document.body.appendChild(alertDiv);
-  }
-
-  // Função para usar nos hooks
-  static async ensureIndexes(organizationId: string) {
-    const errors = await this.checkRequiredIndexes(organizationId);
-    if (errors.length > 0) {
-      this.showIndexInstructions(errors);
-      return false; // Índices faltando
+// Hook para estatísticas do dashboard
+export const useDashboardStats = () => {
+  const { products, loading: productsLoading } = useProducts();
+  const { movements, loading: movementsLoading } = useStockMovements();
+  const [stats, setStats] = useState({
+    totalItems: 0,
+    lowStockItems: 0,
+    totalValue: 0,
+    recentMovements: [] as any[],
+    lowStockAlerts: [] as any[]
+  });
+  
+  // Atualizar estatísticas quando os dados mudarem
+  React.useEffect(() => {
+    if (!productsLoading && !movementsLoading) {
+      setStats({
+        totalItems: products.length,
+        lowStockItems: products.filter(p => p.currentStock <= p.minimumStock).length,
+        totalValue: products.reduce((sum, p) => sum + (p.currentStock * p.costPrice), 0),
+        recentMovements: movements.slice(0, 5),
+        lowStockAlerts: products
+          .filter(p => p.currentStock <= p.minimumStock)
+          .map(p => ({
+            item: p.name,
+            current: p.currentStock,
+            minimum: p.minimumStock,
+            unit: p.unit
+          }))
+      });
     }
-    return true; // Todos os índices OK
-  }
-}
+  }, [products, movements, productsLoading, movementsLoading]);
 
-// Função utilitária para usar nos componentes
-export const checkFirebaseIndexes = async (organizationId: string) => {
-  return await FirebaseIndexHelper.ensureIndexes(organizationId);
+  return { ...stats, loading: productsLoading || movementsLoading };
+};
+
+// Hook para gerenciar receitas
+export const useRecipes = () => {
+  const { organization } = useAuth();
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock data para demonstração
+  const mockRecipes: Recipe[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'Hambúrguer Clássico',
+      description: 'Hambúrguer tradicional com pão, carne e acompanhamentos',
+      category: 'Lanches',
+      ingredients: [
+        {
+          productId: '2',
+          productName: 'Pão Brioche',
+          quantity: 1,
+          unit: 'Unidade',
+          cost: 1.50
+        },
+        {
+          productId: '1',
+          productName: 'MILHO CRUNCH',
+          quantity: 0.05,
+          unit: 'Kg',
+          cost: 3.50
+        },
+        {
+          productId: 'mock-3',
+          productName: 'Carne Bovina',
+          quantity: 0.15,
+          unit: 'Kg',
+          cost: 1.20
+        }
+      ],
+      totalCost: 4.20,
+      servings: 1,
+      costPerServing: 4.20,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ];
+
+  const loadRecipes = async () => {
+    if (!organization?.id) return;
+    
+    console.log('Loading recipes for organization:', organization.id);
+    setLoading(true);
+    try {
+      // Verificar se Firebase está configurado corretamente
+      try {
+        // Tentar carregar do Firebase
+        const result = await getOrganizationRecipes(organization.id);
+        console.log('Recipes loaded:', result);
+        
+        if (result.success && result.recipes) {
+          setRecipes(result.recipes);
+        } else {
+          console.warn('Failed to load recipes from Firebase, using mock data:', result.error);
+          setRecipes(mockRecipes);
+        }
+      } catch (firebaseError) {
+        // Se falhar, usar dados mock
+        console.warn('Error loading recipes from Firebase, using mock data:', firebaseError);
+        setRecipes(mockRecipes);
+      }
+    } catch (err) {
+      console.error('Exception loading recipes, using mock data:', err);
+      setRecipes(mockRecipes);
+      setError('Erro ao carregar receitas. Usando dados de demonstração.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRecipes();
+  }, [organization?.id]);
+
+  return {
+    recipes,
+    loading,
+    error,
+    refreshRecipes: loadRecipes
+  };
+};
+
+// Hook para gerenciar fornecedores
+export const useSuppliers = () => {
+  const { organization } = useAuth();
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Mock data para demonstração
+  const mockSuppliers: Supplier[] = [
+    {
+      id: '1',
+      organizationId: organization?.id || 'demo',
+      name: 'Fornecedor Demo',
+      cnpj: '12.345.678/0001-90',
+      phone: '(11) 99999-9999',
+      email: 'contato@fornecedor.com',
+      address: 'Rua Demo, 123 - São Paulo, SP',
+      products: ['Pão', 'Carne', 'Queijo'],
+      status: 'active' as const,
+      notes: 'Fornecedor de demonstração',
+      lastOrder: '2025-01-01',
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+  ];
+  const loadSuppliers = async () => {
+    if (!organization?.id) return;
+    
+    console.log('Loading suppliers for organization:', organization.id);
+    setLoading(true);
+    try {
+      // Verificar se Firebase está configurado
+      if (!organization.id.startsWith('demo')) {
+        const result = await getOrganizationSuppliers(organization.id);
+        console.log('Suppliers loaded:', result);
+        
+        if (result.success && result.suppliers) {
+          setSuppliers(result.suppliers);
+        } else {
+          console.error('Failed to load suppliers, using mock data:', result.error);
+          setSuppliers(mockSuppliers);
+        }
+      } else {
+        // Usar dados mock para demonstração
+        console.log('Using mock suppliers for demo');
+        setSuppliers(mockSuppliers);
+      }
+    } catch (err) {
+      console.error('Exception loading suppliers, using mock data:', err);
+      setSuppliers(mockSuppliers);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSuppliers();
+  }, [organization?.id]);
+
+  return {
+    suppliers,
+    loading,
+    error,
+    refreshSuppliers: loadSuppliers
+  };
 };
