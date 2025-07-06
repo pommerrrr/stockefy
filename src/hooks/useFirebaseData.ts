@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
-import { checkFirebaseIndexes } from '@/lib/firebaseIndexHelper';
+import { checkFirebaseIndexes } from '@/lib/firebase';
 import { 
   getOrganizationProducts, 
   getStockMovements,
@@ -71,8 +71,8 @@ export const useProducts = () => {
           setError(result.error || 'Erro ao carregar produtos');
         }
       } else {
-        console.log('Using mock products for demo');
-        setProducts(mockProducts);
+        console.error('Failed to load products:', result.error);
+        setError(result.error || 'Erro ao carregar produtos');
       }
     } catch (err) {
       console.error('Exception loading products:', err);
@@ -248,34 +248,17 @@ export const useRecipes = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Mock data para demonstração
-  const mockRecipes: Recipe[] = [
+  const mockRecipes = [
     {
       id: '1',
       organizationId: organization?.id || 'demo',
       name: 'Hambúrguer Clássico',
-      description: 'Hambúrguer tradicional com queijo e salada',
-      category: 'Sanduíches',
       ingredients: [
         {
           productId: '1',
-          itemName: 'Pão Brioche',
+          name: 'Pão Brioche',
           quantity: 1,
           unit: 'Unidade',
-          cost: 1.20
-        },
-        {
-          productId: '2',
-          itemName: 'Hambúrguer',
-          quantity: 180,
-          unit: 'g',
-          cost: 1.50
-        },
-        {
-          productId: '3',
-          itemName: 'Queijo Cheddar',
-          quantity: 1,
-          unit: 'Fatia',
           cost: 1.20
         }
       ],
