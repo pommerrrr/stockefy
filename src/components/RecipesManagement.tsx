@@ -398,3 +398,99 @@ export const useSuppliers = () => {
     refreshSuppliers: loadSuppliers
   };
 };
+
+// RecipesManagement Component
+export function RecipesManagement() {
+  const { recipes, loading, error } = useRecipes();
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="space-y-4">
+            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-20 bg-gray-200 rounded"></div>
+            <div className="h-20 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-6">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <p className="text-red-800">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">Gestão de Receitas</h1>
+        <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+          Nova Receita
+        </button>
+      </div>
+
+      {recipes.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {recipes.map((recipe) => (
+            <div key={recipe.id} className="bg-white p-6 rounded-lg shadow">
+              <h3 className="text-lg font-semibold mb-2">{recipe.name}</h3>
+              {recipe.description && (
+                <p className="text-gray-600 text-sm mb-3">{recipe.description}</p>
+              )}
+              {recipe.category && (
+                <span className="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-3">
+                  {recipe.category}
+                </span>
+              )}
+              
+              <div className="space-y-2 mb-4">
+                <p className="text-sm text-gray-500">Ingredientes:</p>
+                <ul className="text-sm space-y-1">
+                  {recipe.ingredients.slice(0, 3).map((ingredient, index) => (
+                    <li key={index} className="flex justify-between">
+                      <span>{ingredient.itemName}</span>
+                      <span>{ingredient.quantity} {ingredient.unit}</span>
+                    </li>
+                  ))}
+                  {recipe.ingredients.length > 3 && (
+                    <li className="text-gray-400">
+                      +{recipe.ingredients.length - 3} mais...
+                    </li>
+                  )}
+                </ul>
+              </div>
+              
+              <div className="flex justify-between items-center pt-3 border-t">
+                <div>
+                  <p className="text-sm text-gray-500">Custo por porção</p>
+                  <p className="font-semibold text-green-600">
+                    R$ {recipe.costPerServing.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">Porções</p>
+                  <p className="font-semibold">{recipe.servings}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="text-center py-12">
+          <p className="text-gray-500 mb-4">Nenhuma receita cadastrada</p>
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">
+            Criar primeira receita
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
