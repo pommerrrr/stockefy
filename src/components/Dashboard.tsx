@@ -382,3 +382,101 @@ export const useSuppliers = () => {
     refreshSuppliers: loadSuppliers
   };
 };
+
+// Dashboard Component
+export function Dashboard() {
+  const { totalItems, lowStockItems, totalValue, recentMovements, lowStockAlerts, loading } = useDashboardStats();
+
+  if (loading) {
+    return (
+      <div className="p-6">
+        <div className="animate-pulse">
+          <div className="h-8 bg-gray-200 rounded w-1/4 mb-6"></div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+            <div className="h-24 bg-gray-200 rounded"></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-6">
+      <h1 className="text-2xl font-bold mb-6">Dashboard</h1>
+      
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">Total de Itens</h3>
+          <p className="text-2xl font-bold text-gray-900">{totalItems}</p>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">Itens com Estoque Baixo</h3>
+          <p className="text-2xl font-bold text-red-600">{lowStockItems}</p>
+        </div>
+        
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h3 className="text-sm font-medium text-gray-500">Valor Total do Estoque</h3>
+          <p className="text-2xl font-bold text-green-600">
+            R$ {totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+          </p>
+        </div>
+      </div>
+
+      {/* Recent Movements */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-4">Movimentações Recentes</h2>
+          {recentMovements.length > 0 ? (
+            <div className="space-y-3">
+              {recentMovements.map((movement, index) => (
+                <div key={index} className="flex justify-between items-center py-2 border-b">
+                  <div>
+                    <p className="font-medium">{movement.productName || 'Produto'}</p>
+                    <p className="text-sm text-gray-500">
+                      {movement.type === 'entry' ? 'Entrada' : 'Saída'} - {movement.quantity} {movement.unit}
+                    </p>
+                  </div>
+                  <span className={`px-2 py-1 rounded text-xs ${
+                    movement.type === 'entry' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+                  }`}>
+                    {movement.type === 'entry' ? '+' : '-'}{movement.quantity}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">Nenhuma movimentação recente</p>
+          )}
+        </div>
+
+        {/* Low Stock Alerts */}
+        <div className="bg-white p-6 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-4">Alertas de Estoque Baixo</h2>
+          {lowStockAlerts.length > 0 ? (
+            <div className="space-y-3">
+              {lowStockAlerts.map((alert, index) => (
+                <div key={index} className="flex justify-between items-center py-2 border-b">
+                  <div>
+                    <p className="font-medium">{alert.item}</p>
+                    <p className="text-sm text-gray-500">
+                      Estoque atual: {alert.current} {alert.unit}
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 rounded text-xs bg-red-100 text-red-800">
+                    Min: {alert.minimum}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="text-gray-500">Nenhum alerta de estoque baixo</p>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
