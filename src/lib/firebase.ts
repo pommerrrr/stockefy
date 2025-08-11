@@ -255,6 +255,8 @@ export const loginUser = async (email: string, password: string) => {
       friendlyMessage = 'Usuário não encontrado';
     } else if (error.code === 'auth/wrong-password') {
       friendlyMessage = 'Senha incorreta';
+    } else if (error.code === 'auth/invalid-credential') {
+      friendlyMessage = 'Credenciais inválidas. Verifique seu email e senha ou crie uma nova conta.';
     } else if (error.code === 'auth/invalid-email') {
       friendlyMessage = 'Email inválido';
     }
